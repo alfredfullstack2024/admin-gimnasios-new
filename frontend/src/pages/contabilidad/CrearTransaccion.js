@@ -1,18 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Button, Alert } from "react-bootstrap";
 import axios from "axios";
+import { AuthContext } from "../../context/AuthContext";
 
 const CrearTransaccion = () => {
   const [transaccion, setTransaccion] = useState({
-    tipo: "Ingreso",
+    tipo: "egreso", // Cambiado a minúsculas para coincidir con el backend
     descripcion: "",
     monto: "",
     fecha: "",
-    categoria: "", // Nuevo campo para la categoría
+    categoria: "",
   });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
 
   const categories = [
     "Alquiler y Servicios",
@@ -33,11 +35,54 @@ const CrearTransaccion = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!user || !user.token) {
+      setError("No estás autenticado. Inicia sesión primero.");
+      return;
+    }
+
+    // Validaciones locales
+    const { tipo, descripcion, monto, fecha, categoria } = transaccion;
+    if (!descripcion.trim()) {
+      setError("La descripción es obligatoria.");
+      return;
+    }
+    const montoNum = Number(monto);
+    if (isNaN(montoNum) || montoNum <= 0) {
+      setError("El monto debe ser un número positivo.");
+      return;
+    }
+    if (!fecha) {
+      setError("La fecha es obligatoria.");
+      return;
+    }
+    if (!categoria) {
+      setError("La categoría es obligatoria.");
+      return;
+    }
+
     try {
-      await axios.post("http://localhost:5000/api/transacciones", transaccion);
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` },
+      };
+      const payload = {
+        tipo,
+        descripcion,
+        monto: montoNum,
+        fecha,
+        categoria,
+      };
+      console.log("Datos enviados:", payload);
+      await axios.post(
+        "http://localhost:5000/api/transacciones",
+        payload,
+        config
+      );
       navigate("/contabilidad");
     } catch (err) {
-      setError("Error al crear la transacción");
+      setError(
+        "Error al crear la transacción: " +
+          (err.response?.data?.message || err.message)
+      );
       console.error(err);
     }
   };
@@ -55,12 +100,12 @@ const CrearTransaccion = () => {
             value={transaccion.tipo}
             onChange={handleChange}
             required
+            disabled
           >
-            <option value="Ingreso">Ingreso</option>
-            <option value="Egreso">Egreso</option>
+            <option value="egreso">Egreso</option>{" "}
+            {/* Mostrar "Egreso" en la UI, pero enviar "egreso" */}
           </Form.Control>
         </Form.Group>
-
         <Form.Group controlId="descripcion" className="mb-3">
           <Form.Label>Descripción</Form.Label>
           <Form.Control
@@ -72,7 +117,6 @@ const CrearTransaccion = () => {
             required
           />
         </Form.Group>
-
         <Form.Group controlId="monto" className="mb-3">
           <Form.Label>Monto</Form.Label>
           <Form.Control
@@ -82,9 +126,10 @@ const CrearTransaccion = () => {
             onChange={handleChange}
             placeholder="Ingresa el monto"
             required
+            min="0.01"
+            step="0.01"
           />
         </Form.Group>
-
         <Form.Group controlId="fecha" className="mb-3">
           <Form.Label>Fecha</Form.Label>
           <Form.Control
@@ -95,7 +140,6 @@ const CrearTransaccion = () => {
             required
           />
         </Form.Group>
-
         <Form.Group controlId="categoria" className="mb-3">
           <Form.Label>Categoría</Form.Label>
           <Form.Control
@@ -113,7 +157,6 @@ const CrearTransaccion = () => {
             ))}
           </Form.Control>
         </Form.Group>
-
         <Button variant="primary" type="submit">
           Crear Transacción
         </Button>
