@@ -2,7 +2,7 @@ import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Button, Alert } from "react-bootstrap";
 import axios from "axios";
-import { AuthContext } from "@context/AuthContext"; // Usando el alias
+import { AuthContext } from "../context/AuthContext";
 
 const CrearCliente = () => {
   const [formData, setFormData] = useState({
