@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
 import axios from "axios";
-import { AuthContext } from "@context/AuthContext"; // Usando el alias
+import { AuthContext } from "../../context/AuthContext";
 
 const CrearTransaccion = () => {
   const [transaccion, setTransaccion] = useState({
