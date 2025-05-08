@@ -1,0 +1,11 @@
+Normalizar finales de línea para todos los archivos de texto
+
+
+
+
+
+text=auto
+
+Asegurar que ciertos archivos siempre usen LF
+
+*.js text eol=lf *.json text eol=lf
