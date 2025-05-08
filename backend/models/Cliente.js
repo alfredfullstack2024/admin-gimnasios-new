@@ -10,7 +10,6 @@ const clienteSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
-  numeroIdentificacion: { type: String, required: true, unique: true },
   email: {
     type: String,
     required: true,
@@ -25,11 +24,13 @@ const clienteSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  numeroIdentificacion: { type: String, required: true, unique: true },
   estado: {
     type: String,
     enum: ["activo", "inactivo"],
     default: "activo",
   },
+
   fechaRegistro: {
     type: Date,
     default: Date.now,
