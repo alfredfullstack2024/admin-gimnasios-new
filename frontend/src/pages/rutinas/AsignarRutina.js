@@ -18,7 +18,7 @@ import {
   Col,
   Spinner,
 } from "react-bootstrap";
-import { AuthContext } from "@context/AuthContext"; // Usando el alias
+import { AuthContext } from "../../context/AuthContext";
 
 const AsignarRutina = () => {
   const [clientes, setClientes] = useState([]);
