@@ -1,8 +1,8 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Form, Button, Alert } from "react-bootstrap";
+import { Form, Button, Alert, Spinner } from "react-bootstrap";
 import axios from "axios";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext } from "@context/AuthContext"; // Usando el alias
 
 const CrearTransaccion = () => {
   const [transaccion, setTransaccion] = useState({
@@ -13,6 +13,8 @@ const CrearTransaccion = () => {
     categoria: "",
   });
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
@@ -29,12 +31,26 @@ const CrearTransaccion = () => {
     "Capacitaciones y Eventos",
   ];
 
+  // Limpiar mensajes de error y éxito después de 5 segundos
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError("");
+        setSuccess("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
+
   const handleChange = (e) => {
     setTransaccion({ ...transaccion, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+
     if (!user || !user.token) {
       setError("No estás autenticado. Inicia sesión primero.");
       return;
@@ -61,6 +77,7 @@ const CrearTransaccion = () => {
     }
 
     try {
+      setLoading(true);
       const config = {
         headers: { Authorization: `Bearer ${user.token}` },
       };
@@ -77,13 +94,23 @@ const CrearTransaccion = () => {
         payload,
         config
       );
-      navigate("/contabilidad");
+      setSuccess("Transacción creada con éxito!");
+      setTransaccion({
+        tipo: "egreso",
+        descripcion: "",
+        monto: "",
+        fecha: "",
+        categoria: "",
+      });
+      setTimeout(() => navigate("/contabilidad"), 2000); // Redirigir después de 2 segundos
     } catch (err) {
       setError(
         "Error al crear la transacción: " +
           (err.response?.data?.message || err.message)
       );
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,6 +118,14 @@ const CrearTransaccion = () => {
     <div className="container mt-4">
       <h2>Crear Transacción</h2>
       {error && <Alert variant="danger">{error}</Alert>}
+      {success && <Alert variant="success">{success}</Alert>}
+      {loading && (
+        <div className="text-center">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Cargando...</span>
+          </Spinner>
+        </div>
+      )}
       <Form onSubmit={handleSubmit}>
         <Form.Group controlId="tipo" className="mb-3">
           <Form.Label>Tipo</Form.Label>
@@ -102,8 +137,7 @@ const CrearTransaccion = () => {
             required
             disabled
           >
-            <option value="egreso">Egreso</option>{" "}
-            {/* Mostrar "Egreso" en la UI, pero enviar "egreso" */}
+            <option value="egreso">Egreso</option>
           </Form.Control>
         </Form.Group>
         <Form.Group controlId="descripcion" className="mb-3">
@@ -115,6 +149,7 @@ const CrearTransaccion = () => {
             onChange={handleChange}
             placeholder="Ingresa la descripción"
             required
+            disabled={loading}
           />
         </Form.Group>
         <Form.Group controlId="monto" className="mb-3">
@@ -128,6 +163,7 @@ const CrearTransaccion = () => {
             required
             min="0.01"
             step="0.01"
+            disabled={loading}
           />
         </Form.Group>
         <Form.Group controlId="fecha" className="mb-3">
@@ -138,6 +174,7 @@ const CrearTransaccion = () => {
             value={transaccion.fecha}
             onChange={handleChange}
             required
+            disabled={loading}
           />
         </Form.Group>
         <Form.Group controlId="categoria" className="mb-3">
@@ -148,6 +185,7 @@ const CrearTransaccion = () => {
             value={transaccion.categoria}
             onChange={handleChange}
             required
+            disabled={loading}
           >
             <option value="">-- Selecciona una categoría --</option>
             {categories.map((category, index) => (
@@ -157,7 +195,7 @@ const CrearTransaccion = () => {
             ))}
           </Form.Control>
         </Form.Group>
-        <Button variant="primary" type="submit">
+        <Button variant="primary" type="submit" disabled={loading}>
           Crear Transacción
         </Button>
       </Form>
