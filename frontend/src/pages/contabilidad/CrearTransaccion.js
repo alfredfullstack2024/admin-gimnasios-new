@@ -1,110 +1,121 @@
 import React, { useState } from "react";
-import { Form, Button, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import api from "../../api/axios";
+import { Form, Button, Alert } from "react-bootstrap";
+import axios from "axios";
 
 const CrearTransaccion = () => {
-  const [formData, setFormData] = useState({
-    tipo: "egreso",
-    categoria: "",
-    monto: "",
+  const [transaccion, setTransaccion] = useState({
+    tipo: "Ingreso",
     descripcion: "",
-    fecha: new Date().toISOString().split("T")[0],
-    cuentaDebito: "Caja",
-    cuentaCredito: "Gastos",
-    referencia: "manual",
+    monto: "",
+    fecha: "",
+    categoria: "", // Nuevo campo para la categoría
   });
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const categories = [
+    "Alquiler y Servicios",
+    "Sueldos y Honorarios",
+    "Equipamiento y Mantenimiento",
+    "Productos de Limpieza y Sanitización",
+    "Publicidad y Marketing",
+    "Tecnología y Software",
+    "Impuestos y Legalidades",
+    "Compras de Productos para Venta o Consumo Interno",
+    "Transporte y Logística",
+    "Capacitaciones y Eventos",
+  ];
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setTransaccion({ ...transaccion, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Validar campos antes de enviar
-      if (!formData.monto || !formData.descripcion) {
-        setError("Monto y descripción son obligatorios");
-        return;
-      }
-
-      const response = await api.post("/contabilidad", formData);
-      console.log("Transacción creada:", response.data);
+      await axios.post("http://localhost:5000/api/transacciones", transaccion);
       navigate("/contabilidad");
     } catch (err) {
-      const errorMessage =
-        err.response?.status === 500
-          ? `Error ${err.response.status}: ${
-              err.response.data.detalle || "Error interno del servidor"
-            }`
-          : err.response?.status === 400
-          ? `Error ${err.response.status}: ${
-              err.response.data.detalle || "Solicitud inválida"
-            }`
-          : err.message;
-      setError("Error al crear el egreso: " + errorMessage);
-      if (errorMessage.includes("Sesión expirada")) {
-        navigate("/login");
-      }
+      setError("Error al crear la transacción");
+      console.error(err);
     }
   };
 
   return (
     <div className="container mt-4">
-      <h2>Crear Egreso</h2>
+      <h2>Crear Transacción</h2>
       {error && <Alert variant="danger">{error}</Alert>}
       <Form onSubmit={handleSubmit}>
-        <Form.Group controlId="categoria" className="mb-3">
-          <Form.Label>Categoría</Form.Label>
+        <Form.Group controlId="tipo" className="mb-3">
+          <Form.Label>Tipo</Form.Label>
           <Form.Control
-            type="text"
-            name="categoria"
-            value={formData.categoria}
-            onChange={handleChange}
-            placeholder="Ej. Mantenimiento, Baños, etc."
-          />
-        </Form.Group>
-        <Form.Group controlId="monto" className="mb-3">
-          <Form.Label>Monto</Form.Label>
-          <Form.Control
-            type="number"
-            name="monto"
-            value={formData.monto}
+            as="select"
+            name="tipo"
+            value={transaccion.tipo}
             onChange={handleChange}
             required
-          />
+          >
+            <option value="Ingreso">Ingreso</option>
+            <option value="Egreso">Egreso</option>
+          </Form.Control>
         </Form.Group>
+
         <Form.Group controlId="descripcion" className="mb-3">
           <Form.Label>Descripción</Form.Label>
           <Form.Control
             type="text"
             name="descripcion"
-            value={formData.descripcion}
+            value={transaccion.descripcion}
             onChange={handleChange}
+            placeholder="Ingresa la descripción"
             required
           />
         </Form.Group>
+
+        <Form.Group controlId="monto" className="mb-3">
+          <Form.Label>Monto</Form.Label>
+          <Form.Control
+            type="number"
+            name="monto"
+            value={transaccion.monto}
+            onChange={handleChange}
+            placeholder="Ingresa el monto"
+            required
+          />
+        </Form.Group>
+
         <Form.Group controlId="fecha" className="mb-3">
           <Form.Label>Fecha</Form.Label>
           <Form.Control
             type="date"
             name="fecha"
-            value={formData.fecha}
+            value={transaccion.fecha}
             onChange={handleChange}
             required
           />
         </Form.Group>
-        <Button type="submit" variant="primary">
-          Crear Egreso
-        </Button>
-        <Button
-          variant="secondary"
-          className="ms-2"
-          onClick={() => navigate("/contabilidad")}
-        >
-          Cancelar
+
+        <Form.Group controlId="categoria" className="mb-3">
+          <Form.Label>Categoría</Form.Label>
+          <Form.Control
+            as="select"
+            name="categoria"
+            value={transaccion.categoria}
+            onChange={handleChange}
+            required
+          >
+            <option value="">-- Selecciona una categoría --</option>
+            {categories.map((category, index) => (
+              <option key={index} value={category}>
+                {category}
+              </option>
+            ))}
+          </Form.Control>
+        </Form.Group>
+
+        <Button variant="primary" type="submit">
+          Crear Transacción
         </Button>
       </Form>
     </div>
