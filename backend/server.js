@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { iniciarNotificaciones } = require("./jobs/notificacionJob");
+const { protect } = require("./middleware/authMiddleware");
 
 // Cargar variables de entorno desde el archivo .env
 dotenv.config();
@@ -61,14 +62,14 @@ app.use("/api/membresias", membresiaRoutes);
 app.use("/api/entrenadores", entrenadorRoutes);
 app.use("/api/productos", productRoutes);
 app.use("/api/pagos", pagoRoutes);
-app.use("/api/transacciones", transaccionRoutes);
+app.use("/api/transacciones", protect, transaccionRoutes); // Proteger esta ruta
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/clases", claseRoutes);
-app.use("/api/contabilidad", contabilidadRoutes);
-app.use("/api/indicadores", indicadorRoutes);
-app.use("/api/asistencias", asistenciaRoutes);
-app.use("/api/rutinas", rutinaRoutes);
+app.use("/api/users", protect, userRoutes); // Proteger esta ruta
+app.use("/api/clases", protect, claseRoutes); // Proteger esta ruta
+app.use("/api/contabilidad", protect, contabilidadRoutes); // Proteger esta ruta
+app.use("/api/indicadores", protect, indicadorRoutes); // Proteger esta ruta
+app.use("/api/asistencias", protect, asistenciaRoutes); // Proteger esta ruta
+app.use("/api/rutinas", protect, rutinaRoutes); // Proteger esta ruta
 
 // Ruta raíz para verificar que el servidor está funcionando
 app.get("/", (req, res) => {
