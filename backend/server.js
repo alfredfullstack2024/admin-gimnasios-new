@@ -62,6 +62,7 @@ app.use("/api/membresias", membresiaRoutes);
 app.use("/api/entrenadores", entrenadorRoutes);
 app.use("/api/productos", productRoutes);
 app.use("/api/pagos", pagoRoutes);
+app.use("/api/rutinas", rutinaRoutes);
 app.use("/api/transacciones", protect, transaccionRoutes); // Proteger esta ruta
 app.use("/api/auth", authRoutes);
 app.use("/api/users", protect, userRoutes); // Proteger esta ruta
