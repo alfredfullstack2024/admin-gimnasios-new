@@ -11,24 +11,33 @@ const protect = asyncHandler(async (req, res, next) => {
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
   ) {
-    token = req.headers.authorization.split(" ")[1];
-    console.log("Token recibido:", token);
+    try {
+      token = req.headers.authorization.split(" ")[1];
+      console.log("Token recibido:", token);
 
-    // Verificar y decodificar el token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Token decodificado:", decoded);
+      // Verificar y decodificar el token
+      if (!process.env.JWT_SECRET) {
+        throw new Error("Clave secreta JWT no definida en .env");
+      }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log("Token decodificado:", decoded);
 
-    // Buscar el usuario en la base de datos
-    req.user = await User.findById(decoded.id).select("-password");
-    console.log("Usuario encontrado:", req.user);
+      // Buscar el usuario en la base de datos
+      req.user = await User.findById(decoded.id).select("-password");
+      console.log("Usuario encontrado:", req.user);
 
-    if (!req.user) {
-      console.log("Usuario no encontrado para el ID:", decoded.id);
+      if (!req.user) {
+        console.log("Usuario no encontrado para el ID:", decoded.id);
+        res.status(401);
+        throw new Error("No autorizado, usuario no encontrado");
+      }
+
+      next();
+    } catch (error) {
+      console.error("Error al verificar el token:", error.message);
       res.status(401);
-      throw new Error("No autorizado, usuario no encontrado");
+      throw new Error("No autorizado, token inválido o expirado");
     }
-
-    next();
   } else {
     console.log("Encabezado Authorization no encontrado o mal formado");
     res.status(401);
