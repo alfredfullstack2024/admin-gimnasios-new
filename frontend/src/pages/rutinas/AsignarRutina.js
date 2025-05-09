@@ -53,16 +53,18 @@ const AsignarRutina = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
         const [clientesRes, rutinasRes] = await Promise.all([
-          obtenerClientes(),
-          obtenerRutinas(),
+          obtenerClientes(config),
+          obtenerRutinas(config),
         ]);
         setClientes(clientesRes.data);
         setRutinas(rutinasRes.data);
       } catch (err) {
         console.error("Error al cargar datos:", err);
         setError(
-          "Error al cargar datos: " + (err.message || "Intenta de nuevo.")
+          "Error al cargar datos: " +
+            (err.response?.data?.mensaje || err.message)
         );
       } finally {
         setLoading(false);
@@ -112,10 +114,11 @@ const AsignarRutina = () => {
       setLoading(true);
       const cliente = clientes.find((c) => c._id === formData.clienteId);
       if (cliente) {
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
         const response = await consultarRutinaPorNumeroIdentificacion(
-          cliente.numeroIdentificacion
+          cliente.numeroIdentificacion,
+          config
         );
-        // Asegurarse de que response.data sea un array
         const asignacionesData = Array.isArray(response.data)
           ? response.data
           : [response.data];
@@ -126,7 +129,8 @@ const AsignarRutina = () => {
     } catch (err) {
       console.error("Error al cargar asignaciones:", err);
       setError(
-        "Error al cargar asignaciones: " + (err.message || "Intenta de nuevo.")
+        "Error al cargar asignaciones: " +
+          (err.response?.data?.mensaje || err.message)
       );
       setAsignaciones([]);
     } finally {
@@ -151,20 +155,21 @@ const AsignarRutina = () => {
 
     try {
       setLoading(true);
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
       let response;
       if (editMode) {
-        response = await editarAsignacionRutina(editId, formData);
+        response = await editarAsignacionRutina(editId, formData, config);
         console.log("Respuesta del backend (editar):", response);
         setSuccess("Asignación actualizada con éxito!");
       } else {
-        response = await asignarRutina(formData);
+        response = await asignarRutina(formData, config);
         console.log("Respuesta del backend (asignar):", response);
         setSuccess("Rutina asignada con éxito!");
       }
       setEditMode(false);
       setEditId(null);
       setFormData({
-        clienteId: "",
+        clienteId: formData.clienteId, // Mantener el cliente seleccionado
         rutinaId: "",
         diasEntrenamiento: [],
         diasDescanso: [],
@@ -173,7 +178,8 @@ const AsignarRutina = () => {
     } catch (err) {
       console.error("Error al procesar asignación:", err);
       setError(
-        "Error al procesar asignación: " + (err.message || "Intenta de nuevo.")
+        "Error al procesar asignación: " +
+          (err.response?.data?.mensaje || err.message)
       );
     } finally {
       setLoading(false);
@@ -195,14 +201,15 @@ const AsignarRutina = () => {
     if (window.confirm("¿Estás seguro de eliminar esta asignación?")) {
       try {
         setLoading(true);
-        await eliminarAsignacionRutina(id);
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        await eliminarAsignacionRutina(id, config);
         setSuccess("Asignación eliminada con éxito!");
         await fetchAsignaciones();
       } catch (err) {
         console.error("Error al eliminar asignación:", err);
         setError(
           "Error al eliminar asignación: " +
-            (err.message || "Intenta de nuevo.")
+            (err.response?.data?.mensaje || err.message)
         );
       } finally {
         setLoading(false);
@@ -217,8 +224,10 @@ const AsignarRutina = () => {
     }
     try {
       setLoading(true);
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
       const response = await consultarRutinaPorNumeroIdentificacion(
-        numeroCedula
+        numeroCedula,
+        config
       );
       const asignacionesData = Array.isArray(response.data)
         ? response.data
@@ -228,12 +237,25 @@ const AsignarRutina = () => {
     } catch (err) {
       console.error("Error al consultar por cédula:", err);
       setError(
-        "Error al consultar por cédula: " + (err.message || "Intenta de nuevo.")
+        "Error al consultar por cédula: " +
+          (err.response?.data?.mensaje || err.message)
       );
       setAsignacionesUsuario([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearForm = () => {
+    setFormData({
+      clienteId: "",
+      rutinaId: "",
+      diasEntrenamiento: [],
+      diasDescanso: [],
+    });
+    setAsignaciones([]);
+    setEditMode(false);
+    setEditId(null);
   };
 
   return (
@@ -344,7 +366,7 @@ const AsignarRutina = () => {
               setEditMode(false);
               setEditId(null);
               setFormData({
-                clienteId: "",
+                clienteId: formData.clienteId,
                 rutinaId: "",
                 diasEntrenamiento: [],
                 diasDescanso: [],
@@ -355,6 +377,14 @@ const AsignarRutina = () => {
             Cancelar Edición
           </Button>
         )}
+        <Button
+          variant="outline-secondary"
+          className="ms-2"
+          onClick={handleClearForm}
+          disabled={loading}
+        >
+          Limpiar Formulario
+        </Button>
       </Form>
 
       {/* Sección para listar las asignaciones del cliente seleccionado */}
