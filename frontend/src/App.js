@@ -66,7 +66,7 @@ import RegistrarAsistencia from "./pages/asistencias/RegistrarAsistencia";
 // Rutinas
 import CrearRutina from "./pages/rutinas/CrearRutina";
 import AsignarRutina from "./pages/rutinas/AsignarRutina";
-
+import ConsultaUsuario from "./pages/ConsultaUsuario";
 // Indicadores
 import Indicadores from "./pages/Indicadores";
 
@@ -79,6 +79,7 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/consultar-rutina" element={<ConsultarRutina />} />{" "}
+          <Route path="/consulta-usuario" element={<ConsultaUsuario />} />
           {/* Ruta pública */}
           <Route
             path="/"
