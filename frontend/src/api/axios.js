@@ -59,6 +59,8 @@ api.interceptors.response.use(
 
 // Clientes
 export const obtenerClientes = (config) => api.get("/clientes", config);
+export const consultarClientePorCedula = (numeroIdentificacion) =>
+  api.get(`/clientes/consultar/${numeroIdentificacion}`);
 export const obtenerClientePorId = (id, config) =>
   api.get(`/clientes/${id}`, config);
 export const crearCliente = (data, config) =>
@@ -145,4 +147,3 @@ export const login = (data) => api.post("/auth/login", data);
 export const register = (data) => api.post("/auth/register", data);
 
 export default api;
-  
