@@ -12,12 +12,14 @@ import {
 import {
   consultarRutinaPorNumeroIdentificacion,
   consultarPagosPorCedula,
+  consultarClientePorCedula,
 } from "../api/axios";
 
 const ConsultaUsuario = () => {
   const [numeroCedula, setNumeroCedula] = useState("");
   const [rutinas, setRutinas] = useState([]);
   const [pagos, setPagos] = useState([]);
+  const [clienteNombre, setClienteNombre] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -32,17 +34,26 @@ const ConsultaUsuario = () => {
       setError("");
       setRutinas([]);
       setPagos([]);
+      setClienteNombre("");
 
-      const [rutinasResponse, pagosResponse] = await Promise.all([
-        consultarRutinaPorNumeroIdentificacion(numeroCedula),
-        consultarPagosPorCedula(numeroCedula),
-      ]);
+      const [clienteResponse, rutinasResponse, pagosResponse] =
+        await Promise.all([
+          consultarClientePorCedula(numeroCedula),
+          consultarRutinaPorNumeroIdentificacion(numeroCedula),
+          consultarPagosPorCedula(numeroCedula),
+        ]);
 
+      // Nombre del cliente
+      const clienteData = clienteResponse.data;
+      setClienteNombre(clienteData.nombre || "Usuario");
+
+      // Rutinas
       const rutinasData = Array.isArray(rutinasResponse.data)
         ? rutinasResponse.data
         : [rutinasResponse.data];
       setRutinas(rutinasData);
 
+      // Pagos
       const pagosData = Array.isArray(pagosResponse.data)
         ? pagosResponse.data
         : [pagosResponse.data];
@@ -65,6 +76,15 @@ const ConsultaUsuario = () => {
         Ingresa tu número de cédula para consultar tus rutinas asignadas y
         pagos.
       </p>
+
+      {/* Mensaje de bienvenida */}
+      {clienteNombre && !loading && !error && (
+        <Alert variant="success" className="mb-4">
+          Bienvenida(o) {clienteNombre} a nuestra APP de administracion de tu
+          GYM.
+        </Alert>
+      )}
+
       {error && <Alert variant="danger">{error}</Alert>}
       {loading && (
         <div className="text-center">
@@ -160,7 +180,8 @@ const ConsultaUsuario = () => {
       {!loading &&
         rutinas.length === 0 &&
         pagos.length === 0 &&
-        numeroCedula && (
+        numeroCedula &&
+        !error && (
           <Alert variant="info" className="mt-3">
             No se encontraron rutinas ni pagos para el número de cédula
             ingresado.
