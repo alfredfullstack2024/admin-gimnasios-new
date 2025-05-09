@@ -7,7 +7,7 @@ const Clase = require("../models/Clase");
 const Membresia = require("../models/Membresia");
 const { protect } = require("../middleware/authMiddleware");
 
-router.get("/indicadores", protect, async (req, res) => {
+router.get("/", protect, async (req, res) => {
   try {
     // Clientes Activos (asumiendo membresiaActiva como campo opcional)
     const clientesActivos = await Cliente.countDocuments({
