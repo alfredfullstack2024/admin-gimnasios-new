@@ -62,15 +62,14 @@ app.use("/api/membresias", membresiaRoutes);
 app.use("/api/entrenadores", entrenadorRoutes);
 app.use("/api/productos", productRoutes);
 app.use("/api/pagos", pagoRoutes);
-app.use("/api/rutinas", rutinaRoutes);
-app.use("/api/transacciones", protect, transaccionRoutes); // Proteger esta ruta
+app.use("/api/transacciones", protect, transaccionRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/users", protect, userRoutes); // Proteger esta ruta
-app.use("/api/clases", protect, claseRoutes); // Proteger esta ruta
-app.use("/api/contabilidad", protect, contabilidadRoutes); // Proteger esta ruta
-app.use("/api/indicadores", protect, indicadorRoutes); // Proteger esta ruta
-app.use("/api/asistencias", protect, asistenciaRoutes); // Proteger esta ruta
-app.use("/api/rutinas", protect, rutinaRoutes); // Proteger esta ruta
+app.use("/api/users", protect, userRoutes);
+app.use("/api/clases", protect, claseRoutes);
+app.use("/api/contabilidad", protect, contabilidadRoutes);
+app.use("/api/indicadores", protect, indicadorRoutes);
+app.use("/api/asistencias", protect, asistenciaRoutes);
+app.use("/api/rutinas", protect, rutinaRoutes); // Unificamos y protegemos esta ruta
 
 // Ruta raíz para verificar que el servidor está funcionando
 app.get("/", (req, res) => {
@@ -82,7 +81,9 @@ app.get("/", (req, res) => {
 // Manejo de rutas no encontradas
 app.use((req, res, next) => {
   console.log(`⚠️ Ruta no encontrada: ${req.method} ${req.url}`);
-  res.status(404).json({ mensaje: "Ruta no encontrada" });
+  res
+    .status(404)
+    .json({ mensaje: `Ruta no encontrada: ${req.method} ${req.url}` });
 });
 
 // Manejo de errores
@@ -97,5 +98,10 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-  // iniciarNotificaciones(); // Comentado hasta que tengas una clave válida de SendGrid
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log("⚠️ Notificaciones no iniciadas: Falta la clave de SendGrid.");
+  } else {
+    // iniciarNotificaciones();
+    console.log("✅ Notificaciones configuradas (descomentar para habilitar).");
+  }
 });
