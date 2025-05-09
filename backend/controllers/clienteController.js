@@ -12,6 +12,22 @@ const obtenerClientes = async (req, res) => {
   }
 };
 
+// Consultar cliente por número de identificación (pública)
+const consultarClientePorCedula = async (req, res) => {
+  try {
+    const { numeroIdentificacion } = req.params;
+    const cliente = await Cliente.findOne({ numeroIdentificacion });
+    if (!cliente) {
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
+    res.status(200).json(cliente);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error al consultar cliente: " + error.message });
+  }
+};
+
 // Crear un nuevo cliente
 const crearCliente = async (req, res) => {
   try {
@@ -183,6 +199,7 @@ const eliminarCliente = async (req, res) => {
 
 module.exports = {
   obtenerClientes,
+  consultarClientePorCedula, // Nueva función
   crearCliente,
   obtenerClientePorId,
   actualizarCliente,
