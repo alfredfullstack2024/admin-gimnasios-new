@@ -11,7 +11,7 @@ const api = axios.create({
 // Interceptor para añadir el token a las solicitudes
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token"); // O usa el token desde AuthContext si está disponible
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -93,6 +93,8 @@ export const eliminarMembresia = (id, config) =>
 // Pagos
 export const obtenerPagos = (params, config) =>
   api.get("/pagos", { ...config, params });
+export const consultarPagosPorCedula = (numeroIdentificacion) =>
+  api.get(`/pagos/consultar/${numeroIdentificacion}`);
 export const obtenerPagoPorId = (id, config) => api.get(`/pagos/${id}`, config);
 export const crearPago = (data, config) => api.post("/pagos", data, config);
 export const editarPago = (id, data, config) =>
@@ -143,3 +145,4 @@ export const login = (data) => api.post("/auth/login", data);
 export const register = (data) => api.post("/auth/register", data);
 
 export default api;
+  
