@@ -5,14 +5,14 @@ const Producto = require("../models/Producto");
 const Entrenador = require("../models/Entrenador");
 const Clase = require("../models/Clase");
 const Membresia = require("../models/Membresia");
+const { protect } = require("../middleware/authMiddleware");
 
-// Ruta para obtener los indicadores
-router.get("/indicadores", async (req, res) => {
+router.get("/indicadores", protect, async (req, res) => {
   try {
-    // Clientes Activos
+    // Clientes Activos (asumiendo membresiaActiva como campo opcional)
     const clientesActivos = await Cliente.countDocuments({
       estado: "activo",
-      membresiaActiva: true,
+      membresiaActiva: { $exists: true, $eq: true },
     });
     console.log("Clientes Activos:", clientesActivos);
 
@@ -54,7 +54,7 @@ router.get("/indicadores", async (req, res) => {
     cincoDiasDespues.setDate(hoy.getDate() + 5);
     const membresiasPorVencer = await Membresia.countDocuments({
       estado: "activa",
-      fechaFin: { $gte: hoy, $lte: cincoDiasDespues },
+      fechaFin: { $exists: true, $gte: hoy, $lte: cincoDiasDespues },
     });
     console.log("Membresías por Vencer:", membresiasPorVencer);
 
@@ -72,7 +72,9 @@ router.get("/indicadores", async (req, res) => {
     res.json(indicadores);
   } catch (err) {
     console.error("Error al calcular indicadores:", err);
-    res.status(500).json({ message: err.message });
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor: " + err.message });
   }
 });
 
