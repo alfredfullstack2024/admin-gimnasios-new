@@ -30,6 +30,11 @@ const DashboardLayout = () => {
       name: "Asignar Rutina",
       icon: "bi-check-square",
     }, // Nueva opción
+    {
+      path: "/consulta-usuario",
+      name: "Consulta de Usuario",
+      icon: "bi-search",
+    }, // Nueva opción para ConsultaUsuario
   ];
 
   return (
