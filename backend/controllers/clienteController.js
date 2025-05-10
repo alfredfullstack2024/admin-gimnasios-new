@@ -3,7 +3,9 @@ const Cliente = require("../models/Cliente");
 // Obtener todos los clientes
 const obtenerClientes = async (req, res) => {
   try {
-    const clientes = await Cliente.find();
+    const clientes = await Cliente.find().select(
+      "nombre apellido email telefono direccion estado numeroIdentificacion fechaRegistro"
+    );
     res.status(200).json(clientes);
   } catch (error) {
     res
@@ -199,7 +201,7 @@ const eliminarCliente = async (req, res) => {
 
 module.exports = {
   obtenerClientes,
-  consultarClientePorCedula, // Nueva función
+  consultarClientePorCedula,
   crearCliente,
   obtenerClientePorId,
   actualizarCliente,
