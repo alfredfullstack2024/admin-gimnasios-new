@@ -4,11 +4,24 @@ const Cliente = require("../models/Cliente");
 // Listar todos los pagos (protegida)
 const listarPagos = async (req, res) => {
   try {
-    const pagos = await Pago.find()
+    const { fechaInicio, fechaFin } = req.query;
+    const query = {};
+
+    if (fechaInicio && fechaFin) {
+      query.fecha = {
+        $gte: new Date(fechaInicio),
+        $lte: new Date(fechaFin),
+      };
+    }
+
+    const pagos = await Pago.find(query)
       .populate("cliente", "nombre apellido")
       .populate("producto", "nombre precio")
       .populate("creadoPor", "nombre");
-    res.json(pagos);
+
+    const total = pagos.reduce((sum, pago) => sum + pago.monto, 0);
+
+    res.json({ pagos, total });
   } catch (error) {
     res.status(500).json({ mensaje: "Error al listar pagos", error });
   }
@@ -29,13 +42,7 @@ const consultarPagosPorCedula = async (req, res) => {
     const pagos = await Pago.find({ cliente: cliente._id })
       .populate("cliente", "nombre apellido")
       .populate("producto", "nombre precio");
-    if (!pagos || pagos.length === 0) {
-      return res
-        .status(404)
-        .json({ mensaje: "No se encontraron pagos para este cliente" });
-    }
-
-    res.json(pagos);
+    res.json(pagos); // Devolver arreglo vacío si no hay pagos
   } catch (error) {
     res.status(500).json({ mensaje: "Error al consultar pagos", error });
   }
@@ -110,7 +117,7 @@ const eliminarPago = async (req, res) => {
 
 module.exports = {
   listarPagos,
-  consultarPagosPorCedula, // Nueva función
+  consultarPagosPorCedula,
   agregarPago,
   obtenerPagoPorId,
   editarPago,
