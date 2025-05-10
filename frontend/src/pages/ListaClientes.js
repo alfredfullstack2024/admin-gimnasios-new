@@ -15,7 +15,9 @@ const ListaClientes = () => {
         const response = await axios.get("/clientes", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setClientes(Array.isArray(response.data) ? response.data : []);
+        const clientesData = Array.isArray(response.data) ? response.data : [];
+        console.log("Datos de clientes recibidos:", clientesData); // Depuración
+        setClientes(clientesData);
       } catch (err) {
         setError(`❌ Error al cargar los clientes: ${err.message}`);
       } finally {
@@ -61,6 +63,7 @@ const ListaClientes = () => {
             <th>Teléfono</th>
             <th>Dirección</th>
             <th>Estado</th>
+            <th>Número de Cédula</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -74,6 +77,7 @@ const ListaClientes = () => {
                 <td>{cliente.telefono || "No especificado"}</td>
                 <td>{cliente.direccion || "No especificado"}</td>
                 <td>{cliente.estado || "No especificado"}</td>
+                <td>{cliente.numeroIdentificacion || "No especificado"}</td>
                 <td>
                   <Link to={`/clientes/editar/${cliente._id}`}>
                     <Button variant="warning" className="me-2">
@@ -91,7 +95,7 @@ const ListaClientes = () => {
             ))
           ) : (
             <tr>
-              <td colSpan="7" className="text-center">
+              <td colSpan="8" className="text-center">
                 No hay clientes registrados
               </td>
             </tr>
