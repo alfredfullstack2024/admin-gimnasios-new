@@ -4,7 +4,7 @@ const Cliente = require("../models/Cliente");
 // Listar todos los pagos (protegida)
 const listarPagos = async (req, res) => {
   try {
-    const { fechaInicio, fechaFin } = req.query;
+    const { fechaInicio, fechaFin, nombreCliente } = req.query; // Añadido nombreCliente
     const query = {};
 
     if (fechaInicio && fechaFin) {
@@ -14,10 +14,21 @@ const listarPagos = async (req, res) => {
       };
     }
 
-    const pagos = await Pago.find(query)
+    let pagos = await Pago.find(query)
       .populate("cliente", "nombre apellido")
       .populate("producto", "nombre precio")
       .populate("creadoPor", "nombre");
+
+    // Filtrar por nombre completo del cliente si se proporciona
+    if (nombreCliente) {
+      console.log("Filtrando por nombreCliente:", nombreCliente); // Depuración
+      pagos = pagos.filter((pago) => {
+        const nombreCompleto = `${pago.cliente?.nombre || ""} ${
+          pago.cliente?.apellido || ""
+        }`.toLowerCase();
+        return nombreCompleto.includes(nombreCliente.toLowerCase().trim());
+      });
+    }
 
     const total = pagos.reduce((sum, pago) => sum + pago.monto, 0);
 
