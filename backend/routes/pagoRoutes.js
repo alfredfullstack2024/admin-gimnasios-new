@@ -1,23 +1,94 @@
 const express = require("express");
 const router = express.Router();
-const {
-  listarPagos,
-  consultarPagosPorCedula, // Nueva función
-  agregarPago,
-  obtenerPagoPorId,
-  editarPago,
-  eliminarPago,
-} = require("../controllers/pagoController");
+const Pago = require("../models/Pago");
+const Contabilidad = require("../models/Contabilidad");
 const { authMiddleware } = require("../middleware/auth");
 
-// Rutas para pagos (protegidas)
-router.get("/", authMiddleware, listarPagos);
-router.post("/", authMiddleware, agregarPago);
-router.get("/:id", authMiddleware, obtenerPagoPorId);
-router.put("/:id", authMiddleware, editarPago);
-router.delete("/:id", authMiddleware, eliminarPago);
+// Crear un nuevo pago y registrar una transacción correspondiente
+router.post("/", authMiddleware, async (req, res) => {
+  try {
+    console.log(
+      "Solicitud POST recibida en /api/pagos",
+      JSON.stringify(req.body, null, 2)
+    );
 
-// Ruta pública para consultar pagos por número de identificación
-router.get("/consultar/:numeroIdentificacion", consultarPagosPorCedula);
+    const { cliente, producto, cantidad, monto, fecha, metodoPago } = req.body;
+
+    if (!cliente || !producto || !cantidad || !monto || !fecha || !metodoPago) {
+      return res.status(400).json({
+        mensaje: "Faltan campos requeridos",
+        detalle:
+          "Asegúrate de enviar cliente, producto, cantidad, monto, fecha y metodoPago",
+      });
+    }
+
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        mensaje: "Usuario no autenticado",
+        detalle: "No se encontró el ID del usuario en el token",
+      });
+    }
+
+    const fechaPago = new Date(fecha);
+    if (isNaN(fechaPago.getTime())) {
+      return res.status(400).json({ mensaje: "Fecha inválida" });
+    }
+
+    const nuevoPago = new Pago({
+      cliente,
+      producto,
+      cantidad,
+      monto: Number(monto),
+      fecha: fechaPago,
+      metodoPago,
+      creadoPor: req.user._id,
+    });
+
+    const pagoGuardado = await nuevoPago.save();
+
+    // Crear una transacción correspondiente en la colección transacciones
+    const nuevaTransaccion = new Contabilidad({
+      tipo: "ingreso",
+      monto: Number(monto),
+      fecha: fechaPago,
+      descripcion: `Pago de cliente - Método: ${metodoPago}`,
+      categoria: "Pago de cliente",
+      cuentaDebito: "Caja",
+      cuentaCredito: "Ingresos por servicios",
+      referencia: `PAGO-${pagoGuardado._id}`,
+      creadoPor: req.user._id,
+    });
+
+    const transaccionGuardada = await nuevaTransaccion.save();
+    console.log(
+      "Transacción creada desde pago:",
+      JSON.stringify(transaccionGuardada, null, 2)
+    );
+
+    res.status(201).json(pagoGuardado);
+  } catch (error) {
+    console.error("Error al crear pago:", error.stack);
+    res.status(500).json({
+      mensaje: "Error interno al crear el pago",
+      detalle: error.message || "Error desconocido",
+    });
+  }
+});
+
+// Listar todos los pagos (opcional, para depuración)
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const pagos = await Pago.find()
+      .populate("cliente", "nombre")
+      .populate("producto", "nombre");
+    res.json({ pagos });
+  } catch (error) {
+    console.error("Error al listar pagos:", error.stack);
+    res.status(500).json({
+      mensaje: "Error interno al listar los pagos",
+      detalle: error.message || "Error desconocido",
+    });
+  }
+});
 
 module.exports = router;
