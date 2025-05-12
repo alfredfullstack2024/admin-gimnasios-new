@@ -105,15 +105,15 @@ export const eliminarPago = (id, config) => api.delete(`/pagos/${id}`, config);
 
 // Transacciones
 export const obtenerTransacciones = (params, config) =>
-  api.get("/transacciones", { ...config, params });
+  api.get("/contabilidad", { ...config, params });
 export const obtenerTransaccionPorId = (id, config) =>
-  api.get(`/transacciones/${id}`, config);
+  api.get(`/contabilidad/${id}`, config);
 export const crearTransaccion = (data, config) =>
-  api.post("/transacciones", data, config);
+  api.post("/contabilidad", data, config);
 export const editarTransaccion = (id, data, config) =>
-  api.put(`/transacciones/${id}`, data, config);
+  api.put(`/contabilidad/${id}`, data, config);
 export const eliminarTransaccion = (id, config) =>
-  api.delete(`/transacciones/${id}`, config);
+  api.delete(`/contabilidad/${id}`, config);
 
 // Entrenadores
 export const obtenerEntrenadores = (config) => api.get("/entrenadores", config);
