@@ -12,6 +12,7 @@ const EditarCliente = () => {
     telefono: "",
     direccion: "",
     estado: "activo",
+    numeroIdentificacion: "", // Añadido: campo obligatorio
   });
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
@@ -32,6 +33,7 @@ const EditarCliente = () => {
           telefono: response.data.telefono || "",
           direccion: response.data.direccion || "",
           estado: response.data.estado || "activo",
+          numeroIdentificacion: response.data.numeroIdentificacion || "", // Añadido
         });
       } catch (err) {
         setError(`❌ Error al cargar el cliente: ${err.message}`);
@@ -58,7 +60,9 @@ const EditarCliente = () => {
       });
       navigate("/clientes");
     } catch (err) {
-      setError(`❌ Error al actualizar el cliente: ${err.message}`);
+      const errorMessage = err.response?.data?.message || err.message;
+      setError(`❌ Error al actualizar el cliente: ${errorMessage}`);
+      console.error("Detalles del error:", err.response?.data); // Depuración
     }
   };
 
@@ -135,6 +139,17 @@ const EditarCliente = () => {
             <option value="activo">Activo</option>
             <option value="inactivo">Inactivo</option>
           </Form.Control>
+        </Form.Group>
+
+        <Form.Group className="mb-3" controlId="numeroIdentificacion">
+          <Form.Label>Número de Identificación</Form.Label>
+          <Form.Control
+            type="text"
+            name="numeroIdentificacion"
+            value={formData.numeroIdentificacion}
+            onChange={handleChange}
+            required
+          />
         </Form.Group>
 
         <Button variant="primary" type="submit">
