@@ -4,28 +4,25 @@ const usuarioSchema = new mongoose.Schema({
   nombre: {
     type: String,
     required: true,
-    trim: true,
   },
-  correo: {
+  email: {
     type: String,
     required: true,
     unique: true,
-    lowercase: true,
-    trim: true,
   },
-  contraseña: {
+  password: {
     type: String,
     required: true,
   },
   rol: {
     type: String,
-    enum: ["admin", "empleado"],
-    default: "empleado",
+    enum: ["admin", "entrenador", "cliente"],
+    default: "cliente",
+  },
+  fechaCreacion: {
+    type: Date,
+    default: Date.now,
   },
 });
 
-// 💡 Esta línea previene el error de sobreescritura
-const Usuario =
-  mongoose.models.Usuario || mongoose.model("Usuario", usuarioSchema);
-
-module.exports = Usuario;
+module.exports = mongoose.model("Usuario", usuarioSchema);
