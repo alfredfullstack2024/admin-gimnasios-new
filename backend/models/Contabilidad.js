@@ -46,6 +46,6 @@ const contabilidadSchema = new mongoose.Schema(
     },
   },
   { collection: "transacciones" }
-); // Especificar explícitamente la colección
+);
 
 module.exports = mongoose.model("Contabilidad", contabilidadSchema);
