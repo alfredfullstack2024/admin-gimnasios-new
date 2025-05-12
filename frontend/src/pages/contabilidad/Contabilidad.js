@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Table, Button, Alert, Form, Row, Col, Card } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import api from "../../api/axios";
+import { obtenerTransacciones } from "../../api/axios";
 
 const Contabilidad = () => {
   const [transacciones, setTransacciones] = useState([]);
@@ -46,34 +46,41 @@ const Contabilidad = () => {
         params.tipo = tipoTransaccion;
       }
 
-      console.log("Parámetros enviados a /api/contabilidad:", params); // Depuración
-      const response = await api.get("/api/contabilidad", { params });
-      console.log("Respuesta del backend (/api/contabilidad):", response.data); // Depuración
+      console.log(
+        "Parámetros enviados a /api/contabilidad:",
+        JSON.stringify(params, null, 2)
+      ); // Depuración detallada
+      const response = await obtenerTransacciones(params);
+      console.log(
+        "Respuesta del backend (/api/contabilidad):",
+        JSON.stringify(response.data, null, 2)
+      ); // Depuración detallada
       const fetchedTransacciones = response.data.transacciones || [];
       setTransacciones(fetchedTransacciones);
-      setTotalIngresos(
-        fetchedTransacciones
-          .filter((t) => t.tipo === "ingreso")
-          .reduce((sum, t) => sum + t.monto, 0)
-      );
-      setTotalEgresos(
-        fetchedTransacciones
-          .filter((t) => t.tipo === "egreso")
-          .reduce((sum, t) => sum + t.monto, 0)
-      );
-      setBalance(totalIngresos - totalEgresos);
+
+      // Calcular ingresos y egresos
+      const ingresos = fetchedTransacciones
+        .filter((t) => t.tipo === "ingreso")
+        .reduce((sum, t) => sum + t.monto, 0);
+      const egresos = fetchedTransacciones
+        .filter((t) => t.tipo === "egreso")
+        .reduce((sum, t) => sum + t.monto, 0);
+
+      setTotalIngresos(ingresos);
+      setTotalEgresos(egresos);
+      setBalance(ingresos - egresos);
     } catch (err) {
-      const errorMessage = err.response?.data?.mensaje || err.message;
+      const errorMessage = err.message || "Error desconocido";
       setError("Error al cargar las transacciones: " + errorMessage);
       setTransacciones([]);
       setTotalIngresos(0);
       setTotalEgresos(0);
       setBalance(0);
-      console.error("Detalles del error:", err.response?.data); // Depuración
+      console.error("Detalles del error:", JSON.stringify(err, null, 2)); // Depuración detallada
     } finally {
       setIsLoading(false);
     }
-  }, [filtroTipo, mes, semana, tipoTransaccion, totalIngresos, totalEgresos]);
+  }, [filtroTipo, mes, semana, tipoTransaccion]);
 
   useEffect(() => {
     fetchTransacciones();
