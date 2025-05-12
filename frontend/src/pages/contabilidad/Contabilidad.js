@@ -11,7 +11,7 @@ const Contabilidad = () => {
   const [filtroTipo, setFiltroTipo] = useState("mes");
   const [mes, setMes] = useState("");
   const [semana, setSemana] = useState("");
-  const [tipoTransaccion, setTipoTransaccion] = useState(""); // Filtro por tipo (ingreso/egreso)
+  const [tipoTransaccion, setTipoTransaccion] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -46,17 +46,22 @@ const Contabilidad = () => {
         params.tipo = tipoTransaccion;
       }
 
-      console.log("Parámetros enviados a /contabilidad/transacciones:", params); // Depuración
-      const response = await api.get("/contabilidad/transacciones", { params });
-      console.log(
-        "Respuesta del backend (/contabilidad/transacciones):",
-        response.data
-      ); // Depuración
+      console.log("Parámetros enviados a /api/contabilidad:", params); // Depuración
+      const response = await api.get("/api/contabilidad", { params });
+      console.log("Respuesta del backend (/api/contabilidad):", response.data); // Depuración
       const fetchedTransacciones = response.data.transacciones || [];
       setTransacciones(fetchedTransacciones);
-      setTotalIngresos(response.data.totalIngresos || 0);
-      setTotalEgresos(response.data.totalEgresos || 0);
-      setBalance(response.data.balance || 0);
+      setTotalIngresos(
+        fetchedTransacciones
+          .filter((t) => t.tipo === "ingreso")
+          .reduce((sum, t) => sum + t.monto, 0)
+      );
+      setTotalEgresos(
+        fetchedTransacciones
+          .filter((t) => t.tipo === "egreso")
+          .reduce((sum, t) => sum + t.monto, 0)
+      );
+      setBalance(totalIngresos - totalEgresos);
     } catch (err) {
       const errorMessage = err.response?.data?.mensaje || err.message;
       setError("Error al cargar las transacciones: " + errorMessage);
@@ -68,7 +73,7 @@ const Contabilidad = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [filtroTipo, mes, semana, tipoTransaccion]);
+  }, [filtroTipo, mes, semana, tipoTransaccion, totalIngresos, totalEgresos]);
 
   useEffect(() => {
     fetchTransacciones();
@@ -217,10 +222,12 @@ const Contabilidad = () => {
           <thead>
             <tr>
               <th>Tipo</th>
-              <th>Concepto</th>
+              <th>Descripción</th>
               <th>Monto</th>
               <th>Fecha</th>
-              <th>Método de Pago</th>
+              <th>Cuenta Débito</th>
+              <th>Cuenta Crédito</th>
+              <th>Referencia</th>
               <th>Creado Por</th>
             </tr>
           </thead>
@@ -228,10 +235,12 @@ const Contabilidad = () => {
             {transacciones.map((transaccion) => (
               <tr key={transaccion._id}>
                 <td>{transaccion.tipo === "ingreso" ? "Ingreso" : "Egreso"}</td>
-                <td>{transaccion.concepto}</td>
+                <td>{transaccion.descripcion}</td>
                 <td>${transaccion.monto.toLocaleString()}</td>
                 <td>{formatFecha(transaccion.fecha)}</td>
-                <td>{transaccion.metodoPago}</td>
+                <td>{transaccion.cuentaDebito}</td>
+                <td>{transaccion.cuentaCredito}</td>
+                <td>{transaccion.referencia}</td>
                 <td>{transaccion.creadoPor?.nombre || "Desconocido"}</td>
               </tr>
             ))}
