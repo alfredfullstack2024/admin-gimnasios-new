@@ -1,202 +1,116 @@
-import React, { useState, useContext, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
-import axios from "axios";
-import { AuthContext } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import api from "../../api/axios";
 
 const CrearTransaccion = () => {
-  const [transaccion, setTransaccion] = useState({
-    tipo: "egreso", // Cambiado a minúsculas para coincidir con el backend
-    descripcion: "",
+  const [formData, setFormData] = useState({
+    tipo: "ingreso", // Puede ser "ingreso" o "egreso"
+    concepto: "",
     monto: "",
     fecha: "",
-    categoria: "",
+    metodoPago: "efectivo",
   });
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
-
-  const categories = [
-    "Alquiler y Servicios",
-    "Sueldos y Honorarios",
-    "Equipamiento y Mantenimiento",
-    "Productos de Limpieza y Sanitización",
-    "Publicidad y Marketing",
-    "Tecnología y Software",
-    "Impuestos y Legalidades",
-    "Compras de Productos para Venta o Consumo Interno",
-    "Transporte y Logística",
-    "Capacitaciones y Eventos",
-  ];
-
-  // Limpiar mensajes de error y éxito después de 5 segundos
-  useEffect(() => {
-    if (error || success) {
-      const timer = setTimeout(() => {
-        setError("");
-        setSuccess("");
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error, success]);
 
   const handleChange = (e) => {
-    setTransaccion({ ...transaccion, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     setError("");
-    setSuccess("");
-
-    if (!user || !user.token) {
-      setError("No estás autenticado. Inicia sesión primero.");
-      return;
-    }
-
-    // Validaciones locales
-    const { tipo, descripcion, monto, fecha, categoria } = transaccion;
-    if (!descripcion.trim()) {
-      setError("La descripción es obligatoria.");
-      return;
-    }
-    const montoNum = Number(monto);
-    if (isNaN(montoNum) || montoNum <= 0) {
-      setError("El monto debe ser un número positivo.");
-      return;
-    }
-    if (!fecha) {
-      setError("La fecha es obligatoria.");
-      return;
-    }
-    if (!categoria) {
-      setError("La categoría es obligatoria.");
-      return;
-    }
 
     try {
-      setLoading(true);
-      const config = {
-        headers: { Authorization: `Bearer ${user.token}` },
-      };
-      const payload = {
-        tipo,
-        descripcion,
-        monto: montoNum,
-        fecha,
-        categoria,
-      };
-      console.log("Datos enviados:", payload);
-      await axios.post(
-        "http://localhost:5000/api/transacciones",
-        payload,
-        config
-      );
-      setSuccess("Transacción creada con éxito!");
-      setTransaccion({
-        tipo: "egreso",
-        descripcion: "",
-        monto: "",
-        fecha: "",
-        categoria: "",
+      const token = localStorage.getItem("token");
+      console.log("Datos enviados para crear transacción:", formData); // Depuración
+      const response = await api.post("/contabilidad/transacciones", formData, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setTimeout(() => navigate("/contabilidad"), 2000); // Redirigir después de 2 segundos
+      console.log("Respuesta del backend:", response.data); // Depuración
+      navigate("/contabilidad"); // Redirige al listado de transacciones
     } catch (err) {
-      setError(
-        "Error al crear la transacción: " +
-          (err.response?.data?.message || err.message)
-      );
-      console.error(err);
+      const errorMessage = err.response?.data?.mensaje || err.message;
+      setError("Error al crear la transacción: " + errorMessage);
+      console.error("Detalles del error:", err.response?.data); // Depuración
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="container mt-4">
-      <h2>Crear Transacción</h2>
+      <h2>Registrar Nueva Transacción</h2>
       {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
-      {loading && (
-        <div className="text-center">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Cargando...</span>
-          </Spinner>
-        </div>
-      )}
+      {isLoading && <Spinner animation="border" variant="primary" />}
       <Form onSubmit={handleSubmit}>
-        <Form.Group controlId="tipo" className="mb-3">
-          <Form.Label>Tipo</Form.Label>
+        <Form.Group className="mb-3" controlId="tipo">
+          <Form.Label>Tipo de Transacción</Form.Label>
           <Form.Control
             as="select"
             name="tipo"
-            value={transaccion.tipo}
+            value={formData.tipo}
             onChange={handleChange}
             required
-            disabled
           >
+            <option value="ingreso">Ingreso</option>
             <option value="egreso">Egreso</option>
           </Form.Control>
         </Form.Group>
-        <Form.Group controlId="descripcion" className="mb-3">
-          <Form.Label>Descripción</Form.Label>
+
+        <Form.Group className="mb-3" controlId="concepto">
+          <Form.Label>Concepto</Form.Label>
           <Form.Control
             type="text"
-            name="descripcion"
-            value={transaccion.descripcion}
+            name="concepto"
+            value={formData.concepto}
             onChange={handleChange}
-            placeholder="Ingresa la descripción"
             required
-            disabled={loading}
           />
         </Form.Group>
-        <Form.Group controlId="monto" className="mb-3">
+
+        <Form.Group className="mb-3" controlId="monto">
           <Form.Label>Monto</Form.Label>
           <Form.Control
             type="number"
             name="monto"
-            value={transaccion.monto}
+            value={formData.monto}
             onChange={handleChange}
-            placeholder="Ingresa el monto"
             required
-            min="0.01"
-            step="0.01"
-            disabled={loading}
           />
         </Form.Group>
-        <Form.Group controlId="fecha" className="mb-3">
+
+        <Form.Group className="mb-3" controlId="fecha">
           <Form.Label>Fecha</Form.Label>
           <Form.Control
             type="date"
             name="fecha"
-            value={transaccion.fecha}
+            value={formData.fecha}
             onChange={handleChange}
             required
-            disabled={loading}
           />
         </Form.Group>
-        <Form.Group controlId="categoria" className="mb-3">
-          <Form.Label>Categoría</Form.Label>
+
+        <Form.Group className="mb-3" controlId="metodoPago">
+          <Form.Label>Método de Pago</Form.Label>
           <Form.Control
             as="select"
-            name="categoria"
-            value={transaccion.categoria}
+            name="metodoPago"
+            value={formData.metodoPago}
             onChange={handleChange}
-            required
-            disabled={loading}
           >
-            <option value="">-- Selecciona una categoría --</option>
-            {categories.map((category, index) => (
-              <option key={index} value={category}>
-                {category}
-              </option>
-            ))}
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta">Tarjeta</option>
           </Form.Control>
         </Form.Group>
-        <Button variant="primary" type="submit" disabled={loading}>
-          Crear Transacción
+
+        <Button variant="primary" type="submit" disabled={isLoading}>
+          Registrar Transacción
         </Button>
       </Form>
     </div>
