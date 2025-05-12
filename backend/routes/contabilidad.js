@@ -6,7 +6,8 @@ const { authMiddleware } = require("../middleware/auth");
 // Listar todas las transacciones
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    console.log("Solicitud GET recibida en /", req.path, req.query); // Depuración completa de la solicitud
+    console.log("Solicitud GET recibida en /", req.path, req.query); // Depuración de solicitud
+    console.log("Modelo Contabilidad:", Contabilidad); // Verificar si el modelo está cargado
 
     // Validar que el modelo Contabilidad esté disponible
     if (!Contabilidad || typeof Contabilidad.find !== "function") {
@@ -68,7 +69,7 @@ router.get("/", authMiddleware, async (req, res) => {
 
     res.json({ transacciones });
   } catch (error) {
-    console.error("Error al listar transacciones:", error.stack); // Depuración con stack trace
+    console.error("Error al listar transacciones:", error.stack); // Depuración con stack trace completo
     res.status(500).json({
       mensaje: "Error interno al listar las transacciones",
       detalle: error.message || "Error desconocido",
