@@ -132,6 +132,13 @@ const actualizarCliente = async (req, res) => {
       return res.status(404).json({ message: "Cliente no encontrado" });
     }
 
+    // Validar campos obligatorios
+    if (!nombre || !email || !numeroIdentificacion) {
+      return res.status(400).json({
+        message: "Nombre, email y número de identificación son obligatorios",
+      });
+    }
+
     // Validar formato de email
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: "Correo electrónico inválido" });
@@ -178,6 +185,7 @@ const actualizarCliente = async (req, res) => {
     console.log("Cliente actualizado:", clienteActualizado);
     res.status(200).json(clienteActualizado);
   } catch (error) {
+    console.error("Error al actualizar cliente:", error);
     res
       .status(400)
       .json({ message: "Error al actualizar cliente: " + error.message });
