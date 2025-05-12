@@ -6,6 +6,7 @@ const { authMiddleware } = require("../middleware/auth");
 // Listar todas las transacciones
 router.get("/", authMiddleware, async (req, res) => {
   try {
+    console.log("Solicitud GET recibida en /", req.path, req.query); // Depuración
     if (!Contabilidad || typeof Contabilidad.find !== "function") {
       throw new Error("Modelo Contabilidad no está correctamente definido");
     }
@@ -26,10 +27,12 @@ router.get("/", authMiddleware, async (req, res) => {
       filtro.fecha = { $lte: fin };
     }
 
+    console.log("Filtro aplicado:", filtro); // Depuración
     const transacciones = await Contabilidad.find(filtro)
       .populate("creadoPor", "nombre email")
       .sort({ fecha: -1 });
 
+    console.log("Transacciones encontradas:", transacciones); // Depuración
     res.json({ transacciones });
   } catch (error) {
     console.error("Error al listar transacciones:", error.message);
@@ -43,6 +46,7 @@ router.get("/", authMiddleware, async (req, res) => {
 // Crear una nueva transacción
 router.post("/", authMiddleware, async (req, res) => {
   try {
+    console.log("Solicitud POST recibida en /", req.body); // Depuración
     if (!Contabilidad) {
       throw new Error("Modelo Contabilidad no está definido");
     }
@@ -83,7 +87,7 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    const fechaTransaccion = fecha ? new Date(fecha) : new Date();
+    const fechaTransaccion = new Date(fecha);
     if (isNaN(fechaTransaccion)) {
       return res.status(400).json({ mensaje: "Fecha inválida" });
     }
@@ -102,6 +106,7 @@ router.post("/", authMiddleware, async (req, res) => {
 
     const transaccionGuardada = await nuevaTransaccion.save();
     await transaccionGuardada.populate("creadoPor", "nombre email");
+    console.log("Transacción guardada:", transaccionGuardada); // Depuración
     res.status(201).json(transaccionGuardada);
   } catch (error) {
     console.error("Error al crear transacción:", error.message);
@@ -115,6 +120,7 @@ router.post("/", authMiddleware, async (req, res) => {
 // Obtener una transacción por ID
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
+    console.log("Solicitud GET recibida en /:id", req.params.id); // Depuración
     if (!Contabilidad || typeof Contabilidad.findById !== "function") {
       throw new Error("Modelo Contabilidad no está correctamente definido");
     }
@@ -139,6 +145,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
 // Actualizar una transacción
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
+    console.log("Solicitud PUT recibida en /:id", req.params.id); // Depuración
     if (!Contabilidad || typeof Contabilidad.findById !== "function") {
       throw new Error("Modelo Contabilidad no está correctamente definido");
     }
@@ -158,7 +165,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
       return res.status(404).json({ mensaje: "Transacción no encontrada" });
     }
 
-    const fechaTransaccion = fecha ? new Date(fecha) : new Date();
+    const fechaTransaccion = new Date(fecha);
     if (isNaN(fechaTransaccion)) {
       return res.status(400).json({ mensaje: "Fecha inválida" });
     }
@@ -188,6 +195,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 // Eliminar una transacción
 router.delete("/:id", authMiddleware, async (req, res) => {
   try {
+    console.log("Solicitud DELETE recibida en /:id", req.params.id); // Depuración
     if (!Contabilidad || typeof Contabilidad.findByIdAndDelete !== "function") {
       throw new Error("Modelo Contabilidad no está correctamente definido");
     }
