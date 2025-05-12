@@ -28,6 +28,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Importar y registrar modelos
+require("./models/Usuario"); // Registrar el modelo Usuario
+require("./models/Contabilidad"); // Registrar el modelo Contabilidad
+
 // Conexión a MongoDB usando MONGO_URI desde .env
 mongoose
   .connect(process.env.MONGO_URI, {
@@ -91,7 +95,10 @@ app.use((err, req, res, next) => {
   console.error("❌ Error en el servidor:", err.stack);
   res
     .status(500)
-    .json({ mensaje: "Error interno del servidor", error: err.message });
+    .json({
+      mensaje: "Error interno del servidor",
+      error: err.message || "Error desconocido",
+    });
 });
 
 // Iniciar el servidor
