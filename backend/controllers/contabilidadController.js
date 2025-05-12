@@ -24,7 +24,7 @@ const crearTransaccion = async (req, res) => {
       tipo: tipo.toLowerCase(),
       concepto,
       monto,
-      fecha,
+      fecha: new Date(fecha), // Asegurar que la fecha sea un objeto Date
       metodoPago: metodoPago || "efectivo",
       creadoPor: req.user.id,
     });
@@ -39,7 +39,9 @@ const crearTransaccion = async (req, res) => {
       });
   } catch (error) {
     console.error("Error al crear transacción:", error); // Depuración
-    res.status(500).json({ mensaje: "Error al crear transacción", error });
+    res
+      .status(500)
+      .json({ mensaje: "Error al crear transacción", error: error.message });
   }
 };
 
@@ -47,6 +49,8 @@ const crearTransaccion = async (req, res) => {
 const listarTransacciones = async (req, res) => {
   try {
     const { fechaInicio, fechaFin, tipo } = req.query;
+    console.log("Parámetros recibidos:", req.query); // Depuración
+
     const query = {};
 
     if (fechaInicio && fechaFin) {
@@ -60,11 +64,13 @@ const listarTransacciones = async (req, res) => {
       query.tipo = tipo.toLowerCase();
     }
 
-    console.log("Consulta para listar transacciones:", query); // Depuración
+    console.log("Consulta a ejecutar:", query); // Depuración
     const transacciones = await Transaccion.find(query).populate(
       "creadoPor",
       "nombre"
     );
+    console.log("Transacciones encontradas:", transacciones); // Depuración
+
     const totalIngresos = transacciones
       .filter((t) => t.tipo === "ingreso")
       .reduce((sum, t) => sum + t.monto, 0);
@@ -73,11 +79,12 @@ const listarTransacciones = async (req, res) => {
       .reduce((sum, t) => sum + t.monto, 0);
     const balance = totalIngresos - totalEgresos;
 
-    console.log("Transacciones encontradas:", transacciones); // Depuración
     res.json({ transacciones, totalIngresos, totalEgresos, balance });
   } catch (error) {
     console.error("Error al listar transacciones:", error); // Depuración
-    res.status(500).json({ mensaje: "Error al listar transacciones", error });
+    res
+      .status(500)
+      .json({ mensaje: "Error al listar transacciones", error: error.message });
   }
 };
 
