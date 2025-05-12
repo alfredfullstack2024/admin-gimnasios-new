@@ -5,120 +5,180 @@ import api from "../../api/axios";
 
 const Contabilidad = () => {
   const [transacciones, setTransacciones] = useState([]);
-  const [ingresos, setIngresos] = useState(0);
-  const [egresos, setEgresos] = useState(0);
-  const [saldo, setSaldo] = useState(0);
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
+  const [totalIngresos, setTotalIngresos] = useState(0);
+  const [totalEgresos, setTotalEgresos] = useState(0);
+  const [balance, setBalance] = useState(0);
+  const [filtroTipo, setFiltroTipo] = useState("mes");
+  const [mes, setMes] = useState("");
+  const [semana, setSemana] = useState("");
+  const [tipoTransaccion, setTipoTransaccion] = useState(""); // Filtro por tipo (ingreso/egreso)
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const fetchData = useCallback(async () => {
+  const fetchTransacciones = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+
     try {
-      setLoading(true);
       const params = {};
-      if (fechaInicio) {
-        params.fechaInicio = fechaInicio;
+      if (filtroTipo === "mes" && mes) {
+        const [year, month] = mes.split("-");
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+        endDate.setHours(23, 59, 59, 999);
+        params.fechaInicio = startDate.toISOString();
+        params.fechaFin = endDate.toISOString();
+      } else if (filtroTipo === "semana" && semana) {
+        const [year, week] = semana.split("-W");
+        const startDate = new Date(year, 0, 1);
+        startDate.setDate(
+          startDate.getDate() + (week - 1) * 7 - startDate.getDay() + 1
+        );
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+        params.fechaInicio = startDate.toISOString();
+        params.fechaFin = endDate.toISOString();
       }
-      if (fechaFin) {
-        params.fechaFin = fechaFin;
+
+      if (tipoTransaccion) {
+        params.tipo = tipoTransaccion;
       }
 
-      // Obtener egresos
-      const contabilidadResponse = await api.get("/contabilidad", { params });
-      const egresosData = contabilidadResponse.data.transacciones || [];
-
-      // Filtrar solo egresos creados manualmente (referencia: "manual")
-      const egresosFiltrados = egresosData.filter(
-        (t) => t.tipo === "egreso" && t.referencia === "manual"
-      );
-
-      // Calcular total de egresos
-      const egresosTotal = egresosFiltrados.reduce(
-        (sum, t) => sum + t.monto,
-        0
-      );
-
-      // Obtener ingresos totales desde Pagos
-      const pagosResponse = await api.get("/pagos", { params });
-      const ingresosTotal = pagosResponse.data.total || 0;
-
-      // Calcular saldo
-      const saldoTotal = ingresosTotal - egresosTotal;
-
-      setTransacciones(egresosFiltrados);
-      setIngresos(ingresosTotal);
-      setEgresos(egresosTotal);
-      setSaldo(saldoTotal);
-      setError("");
+      console.log("Parámetros enviados a /contabilidad/transacciones:", params); // Depuración
+      const response = await api.get("/contabilidad/transacciones", { params });
+      console.log(
+        "Respuesta del backend (/contabilidad/transacciones):",
+        response.data
+      ); // Depuración
+      const fetchedTransacciones = response.data.transacciones || [];
+      setTransacciones(fetchedTransacciones);
+      setTotalIngresos(response.data.totalIngresos || 0);
+      setTotalEgresos(response.data.totalEgresos || 0);
+      setBalance(response.data.balance || 0);
     } catch (err) {
-      const errorMessage =
-        err.response?.status === 404
-          ? "Ruta no encontrada en el backend. Verifica que el servidor esté corriendo y la ruta /contabilidad esté configurada."
-          : err.message;
-      setError("Error al cargar los datos: " + errorMessage);
-      if (errorMessage.includes("Sesión expirada")) {
-        navigate("/login");
-      }
+      const errorMessage = err.response?.data?.mensaje || err.message;
+      setError("Error al cargar las transacciones: " + errorMessage);
+      setTransacciones([]);
+      setTotalIngresos(0);
+      setTotalEgresos(0);
+      setBalance(0);
+      console.error("Detalles del error:", err.response?.data); // Depuración
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [fechaInicio, fechaFin, navigate]);
+  }, [filtroTipo, mes, semana, tipoTransaccion]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchTransacciones();
+  }, [fetchTransacciones]);
 
-  const manejarFiltrar = (e) => {
+  const manejarFiltrar = async (e) => {
     e.preventDefault();
-    fetchData();
+    setTransacciones([]);
+    setTotalIngresos(0);
+    setTotalEgresos(0);
+    setBalance(0);
+    await fetchTransacciones();
   };
 
-  const limpiarFiltros = () => {
-    setFechaInicio("");
-    setFechaFin("");
-    fetchData();
+  const limpiarFiltros = async () => {
+    setFiltroTipo("mes");
+    setMes("");
+    setSemana("");
+    setTipoTransaccion("");
+    setTransacciones([]);
+    setTotalIngresos(0);
+    setTotalEgresos(0);
+    setBalance(0);
+    await fetchTransacciones();
+  };
+
+  const formatFecha = (fecha) => {
+    const date = new Date(fecha);
+    return new Date(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate()
+    ).toLocaleDateString("es-ES");
   };
 
   return (
     <div className="container mt-4">
       <h2>Contabilidad</h2>
-
       {error && <Alert variant="danger">{error}</Alert>}
-
       <Card className="mb-4">
         <Card.Body>
-          <Card.Title>Filtrar por Fechas</Card.Title>
+          <Card.Title>Filtrar Transacciones</Card.Title>
           <Form onSubmit={manejarFiltrar}>
             <Row>
-              <Col md={4}>
-                <Form.Group controlId="fechaInicio">
-                  <Form.Label>Fecha de Inicio</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={fechaInicio}
-                    onChange={(e) => setFechaInicio(e.target.value)}
-                    placeholder="dd/mm/aaaa"
-                  />
+              <Col md={3}>
+                <Form.Group controlId="filtroTipo">
+                  <Form.Label>Tipo de Filtro</Form.Label>
+                  <Form.Select
+                    value={filtroTipo}
+                    onChange={(e) => setFiltroTipo(e.target.value)}
+                    disabled={isLoading}
+                  >
+                    <option value="mes">Mes</option>
+                    <option value="semana">Semana</option>
+                  </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={4}>
-                <Form.Group controlId="fechaFin">
-                  <Form.Label>Fecha Final</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={fechaFin}
-                    onChange={(e) => setFechaFin(e.target.value)}
-                    placeholder="dd/mm/aaaa"
-                  />
+              {filtroTipo === "mes" ? (
+                <Col md={3}>
+                  <Form.Group controlId="mes">
+                    <Form.Label>Mes</Form.Label>
+                    <Form.Control
+                      type="month"
+                      value={mes}
+                      onChange={(e) => setMes(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </Form.Group>
+                </Col>
+              ) : (
+                <Col md={3}>
+                  <Form.Group controlId="semana">
+                    <Form.Label>Semana</Form.Label>
+                    <Form.Control
+                      type="week"
+                      value={semana}
+                      onChange={(e) => setSemana(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </Form.Group>
+                </Col>
+              )}
+              <Col md={3}>
+                <Form.Group controlId="tipoTransaccion">
+                  <Form.Label>Tipo de Transacción</Form.Label>
+                  <Form.Select
+                    value={tipoTransaccion}
+                    onChange={(e) => setTipoTransaccion(e.target.value)}
+                    disabled={isLoading}
+                  >
+                    <option value="">Todos</option>
+                    <option value="ingreso">Ingresos</option>
+                    <option value="egreso">Egresos</option>
+                  </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={4} className="d-flex align-items-end">
-                <Button type="submit" variant="primary" className="me-2">
+              <Col md={3} className="d-flex align-items-end">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="me-2"
+                  disabled={isLoading}
+                >
                   Filtrar
                 </Button>
-                <Button variant="secondary" onClick={limpiarFiltros}>
+                <Button
+                  variant="secondary"
+                  onClick={limpiarFiltros}
+                  disabled={isLoading}
+                >
                   Limpiar
                 </Button>
               </Col>
@@ -126,68 +186,53 @@ const Contabilidad = () => {
           </Form>
         </Card.Body>
       </Card>
-
       <Card className="mb-4">
         <Card.Body>
           <Card.Title>Resumen Financiero</Card.Title>
-          {loading ? (
-            <p>Cargando datos...</p>
-          ) : (
-            <Row>
-              <Col md={4}>
-                <p>
-                  <strong>Ingresos totales:</strong> $
-                  {ingresos.toLocaleString()}
-                </p>
-              </Col>
-              <Col md={4}>
-                <p>
-                  <strong>Egresos totales:</strong> ${egresos.toLocaleString()}
-                </p>
-              </Col>
-              <Col md={4}>
-                <p>
-                  <strong>Saldo:</strong> ${saldo.toLocaleString()}
-                </p>
-              </Col>
-            </Row>
-          )}
+          <p>
+            <strong>Total Ingresos:</strong> ${totalIngresos.toLocaleString()}
+          </p>
+          <p>
+            <strong>Total Egresos:</strong> ${totalEgresos.toLocaleString()}
+          </p>
+          <p>
+            <strong>Balance:</strong> ${balance.toLocaleString()}
+          </p>
         </Card.Body>
       </Card>
-
       <Button
         variant="primary"
         className="mb-3"
         onClick={() => navigate("/contabilidad/crear-transaccion")}
+        disabled={isLoading}
       >
-        Crear Egreso
+        Registrar Nueva Transacción
       </Button>
-
-      {loading ? (
-        <Alert variant="info">Cargando transacciones...</Alert>
-      ) : transacciones.length === 0 ? (
-        <Alert variant="info">No hay egresos para mostrar.</Alert>
-      ) : (
+      {isLoading && <Alert variant="info">Cargando transacciones...</Alert>}
+      {!isLoading && transacciones.length === 0 && !error && (
+        <Alert variant="info">No hay transacciones para mostrar.</Alert>
+      )}
+      {!isLoading && transacciones.length > 0 && (
         <Table striped bordered hover>
           <thead>
             <tr>
-              <th>Descripción</th>
-              <th>Monto</th>
               <th>Tipo</th>
-              <th>Categoría</th>
+              <th>Concepto</th>
+              <th>Monto</th>
               <th>Fecha</th>
+              <th>Método de Pago</th>
+              <th>Creado Por</th>
             </tr>
           </thead>
           <tbody>
             {transacciones.map((transaccion) => (
               <tr key={transaccion._id}>
-                <td>{transaccion.descripcion}</td>
+                <td>{transaccion.tipo === "ingreso" ? "Ingreso" : "Egreso"}</td>
+                <td>{transaccion.concepto}</td>
                 <td>${transaccion.monto.toLocaleString()}</td>
-                <td>{transaccion.tipo}</td>
-                <td>{transaccion.categoria || "Sin categoría"}</td>
-                <td>
-                  {new Date(transaccion.fecha).toLocaleDateString("es-ES")}
-                </td>
+                <td>{formatFecha(transaccion.fecha)}</td>
+                <td>{transaccion.metodoPago}</td>
+                <td>{transaccion.creadoPor?.nombre || "Desconocido"}</td>
               </tr>
             ))}
           </tbody>
