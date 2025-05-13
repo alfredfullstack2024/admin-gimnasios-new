@@ -142,8 +142,11 @@ export const consultarRutinaPorNumeroIdentificacion = (
   config
 ) => api.get(`/rutinas/consultar/${numeroIdentificacion}`, config);
 
+// Clases
+export const crearClase = (data, config) => api.post("/clases", data, config); // Nueva función
+
 // Autenticación
 export const login = (data) => api.post("/auth/login", data);
-export const register = (data) => api.post("/auth/register", data);
+export const registrarse = (data) => api.post("/auth/register", data);
 
 export default api;
