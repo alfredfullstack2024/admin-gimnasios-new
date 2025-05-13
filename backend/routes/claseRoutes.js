@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const Clase = require("../models/Clase");
+const Entrenador = require("../models/Entrenador");
 const { authMiddleware, checkRole } = require("../middleware/auth");
+
+const mongoose = require("mongoose");
 
 // Obtener todas las clases (admin, recepcionista, entrenador)
 router.get(
@@ -10,10 +13,16 @@ router.get(
   checkRole(["admin", "recepcionista", "entrenador"]),
   async (req, res) => {
     try {
-      const clases = await Clase.find().populate("entrenador");
+      const clases = await Clase.find().populate(
+        "entrenador",
+        "nombre apellido"
+      );
       res.json(clases);
     } catch (error) {
-      res.status(500).json({ mensaje: "Error al obtener las clases", error });
+      res.status(500).json({
+        mensaje: "Error al obtener las clases",
+        detalle: error.message || "Error desconocido",
+      });
     }
   }
 );
@@ -25,13 +34,19 @@ router.get(
   checkRole(["admin", "recepcionista", "entrenador"]),
   async (req, res) => {
     try {
-      const clase = await Clase.findById(req.params.id).populate("entrenador");
+      const clase = await Clase.findById(req.params.id).populate(
+        "entrenador",
+        "nombre apellido"
+      );
       if (!clase) {
         return res.status(404).json({ mensaje: "Clase no encontrada" });
       }
       res.json(clase);
     } catch (error) {
-      res.status(500).json({ mensaje: "Error al obtener la clase", error });
+      res.status(500).json({
+        mensaje: "Error al obtener la clase",
+        detalle: error.message || "Error desconocido",
+      });
     }
   }
 );
@@ -43,23 +58,52 @@ router.post(
   checkRole(["admin", "recepcionista"]),
   async (req, res) => {
     try {
+      console.log("Solicitud POST recibida en /api/clases:", req.body);
+
+      // Validar campos requeridos
+      const { nombre, horario, capacidad } = req.body;
+      if (!nombre || !horario || !capacidad) {
+        return res.status(400).json({
+          mensaje: "Faltan campos requeridos",
+          detalle: "Asegúrate de enviar nombre, horario y capacidad",
+        });
+      }
+
       // Validar y convertir horario a Date
-      const horario = new Date(req.body.horario);
-      if (isNaN(horario.getTime())) {
+      const horarioDate = new Date(horario);
+      if (isNaN(horarioDate.getTime())) {
         return res.status(400).json({ mensaje: "Horario inválido" });
       }
 
+      // Validar entrenador si se proporciona
+      let entrenadorId = req.body.entrenador;
+      if (entrenadorId) {
+        if (!mongoose.Types.ObjectId.isValid(entrenadorId)) {
+          return res.status(400).json({ mensaje: "ID de entrenador inválido" });
+        }
+        const entrenador = await Entrenador.findById(entrenadorId);
+        if (!entrenador) {
+          return res.status(404).json({ mensaje: "Entrenador no encontrado" });
+        }
+      }
+
       const nuevaClase = new Clase({
-        nombre: req.body.nombre,
-        entrenador: req.body.entrenador,
-        horario: horario,
-        capacidad: req.body.capacidad,
+        nombre,
+        entrenador: entrenadorId,
+        horario: horarioDate,
+        capacidad: Number(capacidad),
         estado: req.body.estado || "activa",
+        descripcion: req.body.descripcion || "",
       });
-      await nuevaClase.save();
-      res.status(201).json(nuevaClase);
+      const claseGuardada = await nuevaClase.save();
+      console.log("Clase creada:", claseGuardada);
+      res.status(201).json(claseGuardada);
     } catch (error) {
-      res.status(400).json({ mensaje: "Error al crear la clase", error });
+      console.error("Error al crear clase:", error.stack);
+      res.status(500).json({
+        mensaje: "Error al crear la clase",
+        detalle: error.message || "Error desconocido",
+      });
     }
   }
 );
@@ -71,6 +115,11 @@ router.put(
   checkRole(["admin", "recepcionista"]),
   async (req, res) => {
     try {
+      console.log(
+        "Solicitud PUT recibida en /api/clases/:id:",
+        req.params.id,
+        req.body
+      );
       const clase = await Clase.findById(req.params.id).populate("entrenador");
       if (!clase) {
         return res.status(404).json({ mensaje: "Clase no encontrada" });
@@ -85,16 +134,34 @@ router.put(
         }
       }
 
+      // Validar entrenador si se proporciona
+      let entrenadorId = req.body.entrenador || clase.entrenador;
+      if (entrenadorId && entrenadorId !== clase.entrenador) {
+        if (!mongoose.Types.ObjectId.isValid(entrenadorId)) {
+          return res.status(400).json({ mensaje: "ID de entrenador inválido" });
+        }
+        const entrenador = await Entrenador.findById(entrenadorId);
+        if (!entrenador) {
+          return res.status(404).json({ mensaje: "Entrenador no encontrado" });
+        }
+      }
+
       clase.nombre = req.body.nombre || clase.nombre;
-      clase.entrenador = req.body.entrenador || clase.entrenador;
+      clase.entrenador = entrenadorId;
       clase.horario = horario;
       clase.capacidad = req.body.capacidad || clase.capacidad;
       clase.estado = req.body.estado || clase.estado;
+      clase.descripcion = req.body.descripcion || clase.descripcion;
 
       const claseActualizada = await clase.save();
+      console.log("Clase actualizada:", claseActualizada);
       res.json(claseActualizada);
     } catch (error) {
-      res.status(400).json({ mensaje: "Error al actualizar la clase", error });
+      console.error("Error al actualizar clase:", error.stack);
+      res.status(500).json({
+        mensaje: "Error al actualizar la clase",
+        detalle: error.message || "Error desconocido",
+      });
     }
   }
 );
@@ -112,7 +179,10 @@ router.delete(
       }
       res.json({ mensaje: "Clase eliminada correctamente" });
     } catch (error) {
-      res.status(500).json({ mensaje: "Error al eliminar la clase", error });
+      res.status(500).json({
+        mensaje: "Error al eliminar la clase",
+        detalle: error.message || "Error desconocido",
+      });
     }
   }
 );
