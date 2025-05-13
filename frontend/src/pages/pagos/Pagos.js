@@ -10,11 +10,10 @@ const Pagos = () => {
   const [mes, setMes] = useState("");
   const [semana, setSemana] = useState("");
   const [busquedaNombre, setBusquedaNombre] = useState("");
+  const [pagosFiltrados, setPagosFiltrados] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-
-  const [searchTimeout, setSearchTimeout] = useState(null);
 
   const fetchPagos = useCallback(async () => {
     setIsLoading(true);
@@ -41,22 +40,39 @@ const Pagos = () => {
         params.fechaInicio = startDate.toISOString();
         params.fechaFin = endDate.toISOString();
       }
-      if (busquedaNombre.trim()) {
-        params.nombreCliente = busquedaNombre.trim();
-      }
 
-      console.log("Parámetros enviados a /pagos:", params); // Depuración
+      console.log("Parámetros enviados a /pagos:", params);
       const response = await api.get("/pagos", { params });
-      console.log("Respuesta del backend (/pagos):", response.data); // Depuración
+      console.log("Respuesta del backend (/pagos):", response.data);
       const fetchedPagos = response.data.pagos || [];
       setPagos(fetchedPagos);
-      setTotal(response.data.total || 0);
+
+      // Calcular el total de los montos
+      const totalPagos = fetchedPagos.reduce(
+        (sum, pago) => sum + (pago.monto || 0),
+        0
+      );
+      setTotal(totalPagos);
+
+      // Aplicar filtrado por nombre si existe
+      const pagosFiltrados = busquedaNombre
+        ? fetchedPagos.filter((pago) => {
+            const nombreCliente = pago.cliente
+              ? `${pago.cliente.nombre} ${
+                  pago.cliente.apellido || ""
+                }`.toLowerCase()
+              : "";
+            return nombreCliente.includes(busquedaNombre.toLowerCase());
+          })
+        : fetchedPagos;
+      setPagosFiltrados(pagosFiltrados);
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message;
       setError("Error al cargar los pagos: " + errorMessage);
       setPagos([]);
+      setPagosFiltrados([]);
       setTotal(0);
-      console.error("Detalles del error:", err.response?.data); // Depuración
+      console.error("Detalles del error:", err.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -68,8 +84,8 @@ const Pagos = () => {
 
   const manejarFiltrar = async (e) => {
     e.preventDefault();
-    if (searchTimeout) clearTimeout(searchTimeout);
     setPagos([]);
+    setPagosFiltrados([]);
     setTotal(0);
     await fetchPagos();
   };
@@ -80,6 +96,7 @@ const Pagos = () => {
     setSemana("");
     setBusquedaNombre("");
     setPagos([]);
+    setPagosFiltrados([]);
     setTotal(0);
     await fetchPagos();
   };
@@ -92,11 +109,23 @@ const Pagos = () => {
       await api.delete(`/pagos/${id}`);
       setPagos((prevPagos) => {
         const nuevosPagos = prevPagos.filter((pago) => pago._id !== id);
-        const nuevoTotal = nuevosPagos.reduce(
-          (sum, pago) => sum + pago.monto,
+        const totalPagos = nuevosPagos.reduce(
+          (sum, pago) => sum + (pago.monto || 0),
           0
         );
-        setTotal(nuevoTotal);
+        setTotal(totalPagos);
+        setPagosFiltrados(
+          busquedaNombre
+            ? nuevosPagos.filter((pago) => {
+                const nombreCliente = pago.cliente
+                  ? `${pago.cliente.nombre} ${
+                      pago.cliente.apellido || ""
+                    }`.toLowerCase()
+                  : "";
+                return nombreCliente.includes(busquedaNombre.toLowerCase());
+              })
+            : nuevosPagos
+        );
         return nuevosPagos;
       });
       setError("");
@@ -124,25 +153,25 @@ const Pagos = () => {
     const valor = e.target.value;
     setBusquedaNombre(valor);
 
-    if (searchTimeout) clearTimeout(searchTimeout);
+    // Filtrar los pagos en el frontend
+    const pagosFiltrados = valor
+      ? pagos.filter((pago) => {
+          const nombreCliente = pago.cliente
+            ? `${pago.cliente.nombre} ${
+                pago.cliente.apellido || ""
+              }`.toLowerCase()
+            : "";
+          return nombreCliente.includes(valor.toLowerCase());
+        })
+      : pagos;
+    setPagosFiltrados(pagosFiltrados);
 
-    const timeout = setTimeout(() => {
-      setPagos([]);
-      setTotal(0);
-      fetchPagos();
-    }, 500);
-
-    setSearchTimeout(timeout);
-  };
-
-  const manejarEnter = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (searchTimeout) clearTimeout(searchTimeout);
-      setPagos([]);
-      setTotal(0);
-      fetchPagos();
-    }
+    // Recalcular el total basado en los pagos filtrados
+    const totalFiltrado = pagosFiltrados.reduce(
+      (sum, pago) => sum + (pago.monto || 0),
+      0
+    );
+    setTotal(totalFiltrado);
   };
 
   return (
@@ -199,7 +228,6 @@ const Pagos = () => {
                     type="text"
                     value={busquedaNombre}
                     onChange={manejarCambioBusqueda}
-                    onKeyDown={manejarEnter}
                     placeholder="Nombre completo del cliente"
                     disabled={isLoading}
                   />
@@ -243,10 +271,10 @@ const Pagos = () => {
         Crear pago
       </Button>
       {isLoading && <Alert variant="info">Cargando pagos...</Alert>}
-      {!isLoading && pagos.length === 0 && !error && (
+      {!isLoading && pagosFiltrados.length === 0 && !error && (
         <Alert variant="info">No hay pagos para mostrar.</Alert>
       )}
-      {!isLoading && pagos.length > 0 && (
+      {!isLoading && pagosFiltrados.length > 0 && (
         <Table striped bordered hover>
           <thead>
             <tr>
@@ -258,7 +286,7 @@ const Pagos = () => {
             </tr>
           </thead>
           <tbody>
-            {pagos.map((pago) => (
+            {pagosFiltrados.map((pago) => (
               <tr key={pago._id}>
                 <td>
                   {pago.cliente
