@@ -4,6 +4,32 @@ const Pago = require("../models/Pago");
 const Contabilidad = require("../models/Contabilidad");
 const { authMiddleware } = require("../middleware/auth");
 
+// Listar todos los pagos
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    console.log("Solicitud GET recibida en /api/pagos", req.query); // Depuración
+    console.log("Modelo Pago:", Pago); // Verificar si el modelo está cargado
+
+    if (!Pago || typeof Pago.find !== "function") {
+      throw new Error("Modelo Pago no está correctamente definido");
+    }
+
+    const pagos = await Pago.find()
+      .populate("cliente", "nombre")
+      .populate("producto", "nombre");
+    console.log("Pagos encontrados:", JSON.stringify(pagos, null, 2)); // Depuración detallada
+
+    res.json({ pagos });
+  } catch (error) {
+    console.error("Error al listar pagos:", error.stack); // Depuración con stack trace
+    res.status(500).json({
+      mensaje: "Error interno al listar los pagos",
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  }
+});
+
 // Crear un nuevo pago y registrar una transacción correspondiente
 router.post("/", authMiddleware, async (req, res) => {
   try {
@@ -71,22 +97,7 @@ router.post("/", authMiddleware, async (req, res) => {
     res.status(500).json({
       mensaje: "Error interno al crear el pago",
       detalle: error.message || "Error desconocido",
-    });
-  }
-});
-
-// Listar todos los pagos (opcional, para depuración)
-router.get("/", authMiddleware, async (req, res) => {
-  try {
-    const pagos = await Pago.find()
-      .populate("cliente", "nombre")
-      .populate("producto", "nombre");
-    res.json({ pagos });
-  } catch (error) {
-    console.error("Error al listar pagos:", error.stack);
-    res.status(500).json({
-      mensaje: "Error interno al listar los pagos",
-      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });
