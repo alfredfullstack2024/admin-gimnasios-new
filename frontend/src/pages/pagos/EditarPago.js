@@ -21,10 +21,12 @@ const EditarPago = () => {
     metodoPago: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const [pagoResponse, clientesResponse, productosResponse] =
           await Promise.all([
@@ -48,10 +50,17 @@ const EditarPago = () => {
         setClientes(clientesResponse.data);
         setProductos(productosResponse.data);
       } catch (err) {
-        setError("Error al cargar datos: " + err.message);
+        const errorMessage = err.response?.data?.mensaje || err.message;
+        setError(
+          errorMessage === "Pago no encontrado"
+            ? "Error al cargar datos: Recurso no encontrado"
+            : "Error al cargar datos: " + errorMessage
+        );
         if (err.message.includes("Sesión expirada")) {
           navigate("/login");
         }
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchData();
@@ -80,6 +89,7 @@ const EditarPago = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     if (formData.producto) {
       const productoSeleccionado = productos.find(
@@ -90,6 +100,7 @@ const EditarPago = () => {
         productoSeleccionado.stock < parseInt(formData.cantidad)
       ) {
         setError("Stock insuficiente para el producto seleccionado.");
+        setIsLoading(false);
         return;
       }
     }
@@ -107,10 +118,15 @@ const EditarPago = () => {
       await editarPago(id, datosEnvio);
       navigate("/pagos");
     } catch (err) {
-      setError("Error al actualizar el pago: " + err.message);
+      setError(
+        "Error al actualizar el pago: " +
+          (err.response?.data?.mensaje || err.message)
+      );
       if (err.message.includes("Sesión expirada")) {
         navigate("/login");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -118,6 +134,7 @@ const EditarPago = () => {
     <div className="container mt-4">
       <h2>Editar Pago</h2>
 
+      {isLoading && <Alert variant="info">Cargando...</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
 
       <Card>
@@ -130,6 +147,7 @@ const EditarPago = () => {
                 name="cliente"
                 value={formData.cliente}
                 onChange={handleChange}
+                disabled={isLoading}
               >
                 <option value="">Seleccione un cliente</option>
                 {clientes.map((cliente) => (
@@ -147,6 +165,7 @@ const EditarPago = () => {
                 name="producto"
                 value={formData.producto}
                 onChange={handleChange}
+                disabled={isLoading}
               >
                 <option value="">Seleccione un producto</option>
                 {productos.map((producto) => (
@@ -167,6 +186,7 @@ const EditarPago = () => {
                 onChange={handleChange}
                 min="1"
                 required
+                disabled={isLoading}
               />
             </Form.Group>
 
@@ -179,6 +199,7 @@ const EditarPago = () => {
                 onChange={handleChange}
                 step="0.01"
                 required
+                disabled={isLoading}
               />
             </Form.Group>
 
@@ -189,6 +210,7 @@ const EditarPago = () => {
                 name="fecha"
                 value={formData.fecha}
                 onChange={handleChange}
+                disabled={isLoading}
               />
             </Form.Group>
 
@@ -200,6 +222,7 @@ const EditarPago = () => {
                 value={formData.metodoPago}
                 onChange={handleChange}
                 required
+                disabled={isLoading}
               >
                 <option value="Efectivo">Efectivo</option>
                 <option value="Tarjeta">Tarjeta</option>
@@ -207,13 +230,14 @@ const EditarPago = () => {
               </Form.Control>
             </Form.Group>
 
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" disabled={isLoading}>
               Actualizar Pago
             </Button>
             <Button
               variant="secondary"
               className="ms-2"
               onClick={() => navigate("/pagos")}
+              disabled={isLoading}
             >
               Cancelar
             </Button>
