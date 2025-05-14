@@ -1,188 +1,292 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Form, Button, Alert, Spinner } from "react-bootstrap";
-import axios from "axios";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { AuthContext } from "../../context/AuthContext";
-import { useContext } from "react";
+import { Form, Button, Alert, Card, Row, Col } from "react-bootstrap";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  obtenerClasePorId,
+  actualizarClase,
+  obtenerEntrenadores,
+} from "../../api/axios";
 
 const EditarClase = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
-
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
-    fechaInicio: null,
-    fechaFin: null,
-    instructor: "",
-    cupoMaximo: "",
+    horario: [{ dia: "", hora: "" }],
+    capacidad: 1,
+    entrenador: "",
+    estado: "activa",
   });
+  const [entrenadores, setEntrenadores] = useState([]);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const diasSemana = [
+    "lunes",
+    "martes",
+    "miércoles",
+    "jueves",
+    "viernes",
+    "sábado",
+    "domingo",
+  ];
 
   useEffect(() => {
     const fetchClase = async () => {
-      if (!user || !user.token) {
-        setError("Debes iniciar sesión para editar una clase.");
-        return;
-      }
+      setIsLoading(true);
       try {
-        setLoading(true);
-        const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        const response = await axios.get(
-          `http://localhost:5000/api/clases/${id}`,
-          config
-        );
+        const response = await obtenerClasePorId(id);
         const clase = response.data;
         setFormData({
           nombre: clase.nombre || "",
           descripcion: clase.descripcion || "",
-          fechaInicio: clase.fechaInicio ? new Date(clase.fechaInicio) : null,
-          fechaFin: clase.fechaFin ? new Date(clase.fechaFin) : null,
-          instructor: clase.instructor || "",
-          cupoMaximo: clase.cupoMaximo || "",
+          horario:
+            clase.horario.length > 0 ? clase.horario : [{ dia: "", hora: "" }],
+          capacidad: clase.capacidad || 1,
+          entrenador: clase.entrenador?._id || "",
+          estado: clase.estado || "activa",
         });
       } catch (err) {
-        setError(
-          "Error al cargar la clase: " +
-            (err.response?.data?.message || err.message)
-        );
+        setError("Error al cargar la clase: " + err.message);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
+
+    const fetchEntrenadores = async () => {
+      try {
+        const response = await obtenerEntrenadores();
+        setEntrenadores(response.data);
+      } catch (err) {
+        setError("Error al cargar entrenadores: " + err.message);
+      }
+    };
+
     fetchClase();
-  }, [id, user]);
+    fetchEntrenadores();
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
   };
 
-  const handleDateChange = (name) => (date) => {
-    setFormData({ ...formData, [name]: date });
+  const handleHorarioChange = (index, field, value) => {
+    const nuevoHorario = [...formData.horario];
+    nuevoHorario[index][field] = value;
+    setFormData((prevState) => ({ ...prevState, horario: nuevoHorario }));
+  };
+
+  const agregarHorario = () => {
+    setFormData((prevState) => ({
+      ...prevState,
+      horario: [...prevState.horario, { dia: "", hora: "" }],
+    }));
+  };
+
+  const eliminarHorario = (index) => {
+    const nuevoHorario = formData.horario.filter((_, i) => i !== index);
+    setFormData((prevState) => ({ ...prevState, horario: nuevoHorario }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
+    setIsLoading(true);
 
-    if (!user || !user.token) {
-      setError("Debes iniciar sesión para editar una clase.");
+    if (formData.horario.length === 0) {
+      setError("Debe proporcionar al menos un horario");
+      setIsLoading(false);
       return;
     }
+    for (const horario of formData.horario) {
+      if (!horario.dia || !horario.hora) {
+        setError("Todos los horarios deben tener un día y una hora");
+        setIsLoading(false);
+        return;
+      }
+      if (!diasSemana.includes(horario.dia.toLowerCase())) {
+        setError("Día inválido: " + horario.dia);
+        setIsLoading(false);
+        return;
+      }
+      if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(horario.hora)) {
+        setError("Formato de hora inválido: " + horario.hora);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    const datosEnvio = {
+      ...formData,
+      capacidad: Number(formData.capacidad),
+    };
 
     try {
-      setLoading(true);
-      const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      const payload = {
-        ...formData,
-        fechaInicio: formData.fechaInicio
-          ? formData.fechaInicio.toISOString()
-          : null,
-        fechaFin: formData.fechaFin ? formData.fechaFin.toISOString() : null,
-      };
-      await axios.put(
-        `http://localhost:5000/api/clases/${id}`,
-        payload,
-        config
-      );
-      setSuccess("Clase actualizada con éxito!");
-      setTimeout(() => navigate("/clases"), 2000);
+      await actualizarClase(id, datosEnvio);
+      navigate("/clases");
     } catch (err) {
-      setError(
-        "Error al actualizar la clase: " +
-          (err.response?.data?.message || err.message)
-      );
+      const errorMessage = err.response?.data?.mensaje || err.message;
+      setError("Error al actualizar la clase: " + errorMessage);
+      if (errorMessage.includes("Sesión expirada")) {
+        navigate("/login");
+      }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="container mt-4">
       <h2>Editar Clase</h2>
+
+      {isLoading && <Alert variant="info">Cargando...</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
-      {loading && (
-        <div className="text-center">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Cargando...</span>
-          </Spinner>
-        </div>
-      )}
-      <Form onSubmit={handleSubmit}>
-        <Form.Group className="mb-3">
-          <Form.Label>Nombre</Form.Label>
-          <Form.Control
-            type="text"
-            name="nombre"
-            value={formData.nombre}
-            onChange={handleChange}
-            required
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Descripción</Form.Label>
-          <Form.Control
-            as="textarea"
-            name="descripcion"
-            value={formData.descripcion}
-            onChange={handleChange}
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Fecha Inicio</Form.Label>
-          <DatePicker
-            selected={formData.fechaInicio}
-            onChange={handleDateChange("fechaInicio")}
-            dateFormat="yyyy-MM-dd"
-            className="form-control"
-            placeholderText="Selecciona una fecha"
-            isClearable
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Fecha Fin</Form.Label>
-          <DatePicker
-            selected={formData.fechaFin}
-            onChange={handleDateChange("fechaFin")}
-            dateFormat="yyyy-MM-dd"
-            className="form-control"
-            placeholderText="Selecciona una fecha"
-            isClearable
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Instructor</Form.Label>
-          <Form.Control
-            type="text"
-            name="instructor"
-            value={formData.instructor}
-            onChange={handleChange}
-            required
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Cupo Máximo</Form.Label>
-          <Form.Control
-            type="number"
-            name="cupoMaximo"
-            value={formData.cupoMaximo}
-            onChange={handleChange}
-            required
-            min="1"
-          />
-        </Form.Group>
-        <Button variant="primary" type="submit" disabled={loading}>
-          Actualizar Clase
-        </Button>
-      </Form>
+
+      <Card>
+        <Card.Body>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3" controlId="nombre">
+              <Form.Label>Nombre</Form.Label>
+              <Form.Control
+                type="text"
+                name="nombre"
+                value={formData.nombre}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="descripcion">
+              <Form.Label>Descripción</Form.Label>
+              <Form.Control
+                as="textarea"
+                name="descripcion"
+                value={formData.descripcion}
+                onChange={handleChange}
+                disabled={isLoading}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="horario">
+              <Form.Label>Horarios</Form.Label>
+              {formData.horario.map((horario, index) => (
+                <Row key={index} className="mb-2">
+                  <Col md={5}>
+                    <Form.Control
+                      as="select"
+                      value={horario.dia}
+                      onChange={(e) =>
+                        handleHorarioChange(index, "dia", e.target.value)
+                      }
+                      required
+                      disabled={isLoading}
+                    >
+                      <option value="">Seleccione un día</option>
+                      {diasSemana.map((dia) => (
+                        <option key={dia} value={dia}>
+                          {dia.charAt(0).toUpperCase() + dia.slice(1)}
+                        </option>
+                      ))}
+                    </Form.Control>
+                  </Col>
+                  <Col md={5}>
+                    <Form.Control
+                      type="time"
+                      value={horario.hora}
+                      onChange={(e) =>
+                        handleHorarioChange(index, "hora", e.target.value)
+                      }
+                      required
+                      disabled={isLoading}
+                    />
+                  </Col>
+                  <Col md={2}>
+                    <Button
+                      variant="danger"
+                      onClick={() => eliminarHorario(index)}
+                      disabled={isLoading || formData.horario.length === 1}
+                    >
+                      Eliminar
+                    </Button>
+                  </Col>
+                </Row>
+              ))}
+              <Button
+                variant="secondary"
+                onClick={agregarHorario}
+                disabled={isLoading}
+                className="mt-2"
+              >
+                Agregar otro horario
+              </Button>
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="capacidad">
+              <Form.Label>Capacidad</Form.Label>
+              <Form.Control
+                type="number"
+                name="capacidad"
+                value={formData.capacidad}
+                onChange={handleChange}
+                min="1"
+                required
+                disabled={isLoading}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="entrenador">
+              <Form.Label>Entrenador</Form.Label>
+              <Form.Control
+                as="select"
+                name="entrenador"
+                value={formData.entrenador}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              >
+                <option value="">Seleccione un entrenador</option>
+                {entrenadores.map((entrenador) => (
+                  <option key={entrenador._id} value={entrenador._id}>
+                    {entrenador.nombre} {entrenador.apellido}
+                  </option>
+                ))}
+              </Form.Control>
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="estado">
+              <Form.Label>Estado</Form.Label>
+              <Form.Control
+                as="select"
+                name="estado"
+                value={formData.estado}
+                onChange={handleChange}
+                disabled={isLoading}
+              >
+                <option value="activa">Activa</option>
+                <option value="inactiva">Inactiva</option>
+              </Form.Control>
+            </Form.Group>
+
+            <Button variant="primary" type="submit" disabled={isLoading}>
+              Guardar Cambios
+            </Button>
+            <Button
+              variant="secondary"
+              className="ms-2"
+              onClick={() => navigate("/clases")}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+          </Form>
+        </Card.Body>
+      </Card>
     </div>
   );
 };
