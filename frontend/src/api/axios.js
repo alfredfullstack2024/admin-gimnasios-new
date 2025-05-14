@@ -30,17 +30,14 @@ api.interceptors.response.use(
         new Error("Sesión expirada. Por favor, inicia sesión nuevamente.")
       );
     }
-
     if (error.response?.status === 403) {
       return Promise.reject(
         new Error("No tienes permisos para realizar esta acción.")
       );
     }
-
     if (error.response?.status === 404) {
       return Promise.reject(new Error("Recurso no encontrado."));
     }
-
     if (!error.response) {
       return Promise.reject(
         new Error(
@@ -48,7 +45,6 @@ api.interceptors.response.use(
         )
       );
     }
-
     const errorMessage = error.response?.data?.mensaje || "Error desconocido";
     const statusCode = error.response?.status || "desconocido";
     return Promise.reject(new Error(`Error ${statusCode}: ${errorMessage}`));
@@ -142,8 +138,13 @@ export const consultarRutinaPorNumeroIdentificacion = (
   config
 ) => api.get(`/rutinas/consultar/${numeroIdentificacion}`, config);
 
-// Clases
-export const crearClase = (data, config) => api.post("/clases", data, config); // Nueva función
+// Sesiones
+export const obtenerSesiones = (config) => api.get("/sesiones", config);
+export const crearSesion = (data, config) =>
+  api.post("/sesiones/crear", data, config);
+
+// Usuarios
+export const obtenerUsuarios = (config) => api.get("/usuarios", config);
 
 // Autenticación
 export const login = (data) => api.post("/auth/login", data);
