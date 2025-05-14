@@ -74,15 +74,15 @@ const ListaClases = () => {
                   <td>{clase.nombre}</td>
                   <td>{clase.descripcion}</td>
                   <td>
-                    {clase.horario && clase.horario.length > 0
-                      ? clase.horario.map((horario, index) => (
-                          <div key={index}>
-                            {horario.dia.charAt(0).toUpperCase() +
-                              horario.dia.slice(1)}
-                            : {horario.hora}
-                          </div>
-                        ))
-                      : "Sin horario"}
+                    {clase.horario && clase.horario.length > 0 ? (
+                      clase.horario.map((horario, index) => (
+                        <div key={index}>
+                          {horario.dia.charAt(0).toUpperCase() + horario.dia.slice(1)}: {horario.hora}
+                        </div>
+                      ))
+                    ) : (
+                      "Sin horario"
+                    )}
                   </td>
                   <td>{clase.capacidad}</td>
                   <td>
