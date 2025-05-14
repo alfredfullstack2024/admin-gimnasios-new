@@ -8,7 +8,7 @@ const CrearClase = () => {
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
-    horarios: [{ dia: "", hora: "" }],
+    horario: [{ dia: "", hora: "" }], // Asegurado como array
     capacidad: 1,
     entrenador: "",
     estado: "activa",
@@ -46,7 +46,7 @@ const CrearClase = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    console.log(`Cambiando ${name} a:`, value); // Log para depurar
+    console.log(`Cambiando ${name} a:`, value);
     setFormData((prevState) => ({
       ...prevState,
       [name]: value,
@@ -54,21 +54,21 @@ const CrearClase = () => {
   };
 
   const handleHorarioChange = (index, field, value) => {
-    const nuevosHorarios = [...formData.horarios];
-    nuevosHorarios[index][field] = value;
-    setFormData((prevState) => ({ ...prevState, horarios: nuevosHorarios }));
+    const nuevoHorario = [...formData.horario];
+    nuevoHorario[index][field] = value;
+    setFormData((prevState) => ({ ...prevState, horario: nuevoHorario }));
   };
 
   const agregarHorario = () => {
     setFormData((prevState) => ({
       ...prevState,
-      horarios: [...prevState.horarios, { dia: "", hora: "" }],
+      horario: [...prevState.horario, { dia: "", hora: "" }],
     }));
   };
 
   const eliminarHorario = (index) => {
-    const nuevosHorarios = formData.horarios.filter((_, i) => i !== index);
-    setFormData((prevState) => ({ ...prevState, horarios: nuevosHorarios }));
+    const nuevoHorario = formData.horario.filter((_, i) => i !== index);
+    setFormData((prevState) => ({ ...prevState, horario: nuevoHorario }));
   };
 
   const handleSubmit = async (e) => {
@@ -76,13 +76,12 @@ const CrearClase = () => {
     setError("");
     setIsLoading(true);
 
-    // Validar horarios
-    if (formData.horarios.length === 0) {
+    if (formData.horario.length === 0) {
       setError("Debe proporcionar al menos un horario");
       setIsLoading(false);
       return;
     }
-    for (const horario of formData.horarios) {
+    for (const horario of formData.horario) {
       if (!horario.dia || !horario.hora) {
         setError("Todos los horarios deben tener un día y una hora");
         setIsLoading(false);
@@ -189,9 +188,9 @@ const CrearClase = () => {
               />
             </Form.Group>
 
-            <Form.Group className="mb-3" controlId="horarios">
+            <Form.Group className="mb-3" controlId="horario">
               <Form.Label>Horarios</Form.Label>
-              {formData.horarios.map((horario, index) => (
+              {formData.horario.map((horario, index) => (
                 <Row key={index} className="mb-2">
                   <Col md={5}>
                     <Form.Control
@@ -226,7 +225,7 @@ const CrearClase = () => {
                     <Button
                       variant="danger"
                       onClick={() => eliminarHorario(index)}
-                      disabled={isLoading || formData.horarios.length === 1}
+                      disabled={isLoading || formData.horario.length === 1}
                     >
                       Eliminar
                     </Button>
