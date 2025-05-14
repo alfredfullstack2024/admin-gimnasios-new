@@ -1,12 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const Clase = require("../models/Clase");
 const Entrenador = require("../models/Entrenador");
 const { authMiddleware, checkRole } = require("../middleware/auth");
 
-const mongoose = require("mongoose");
-
-// Obtener todas las clases (admin, recepcionista, entrenador)
+// Obtener todas las clases
 router.get(
   "/",
   authMiddleware,
@@ -21,13 +20,13 @@ router.get(
     } catch (error) {
       res.status(500).json({
         mensaje: "Error al obtener las clases",
-        detalle: error.message || "Error desconocido",
+        detalle: error.message,
       });
     }
   }
 );
 
-// Obtener una clase por ID (admin, recepcionista, entrenador)
+// Obtener una clase por ID
 router.get(
   "/:id",
   authMiddleware,
@@ -45,128 +44,143 @@ router.get(
     } catch (error) {
       res.status(500).json({
         mensaje: "Error al obtener la clase",
-        detalle: error.message || "Error desconocido",
+        detalle: error.message,
       });
     }
   }
 );
 
-// Crear una clase (solo admin y recepcionista)
+// Crear una clase
 router.post(
   "/",
   authMiddleware,
   checkRole(["admin", "recepcionista"]),
   async (req, res) => {
     try {
-      console.log("Solicitud POST recibida en /api/clases:", req.body);
+      const { nombre, descripcion, horarios, capacidad, entrenador, estado } =
+        req.body;
 
-      // Validar campos requeridos
-      const { nombre, horario, capacidad } = req.body;
-      if (!nombre || !horario || !capacidad) {
+      if (
+        !nombre ||
+        !Array.isArray(horarios) ||
+        horarios.length === 0 ||
+        !capacidad
+      ) {
         return res.status(400).json({
           mensaje: "Faltan campos requeridos",
-          detalle: "Asegúrate de enviar nombre, horario y capacidad",
+          detalle:
+            "Asegúrate de enviar nombre, al menos un horario y capacidad",
         });
       }
 
-      // Validar y convertir horario a Date
-      const horarioDate = new Date(horario);
-      if (isNaN(horarioDate.getTime())) {
-        return res.status(400).json({ mensaje: "Horario inválido" });
+      // Validar estructura de cada horario
+      for (const h of horarios) {
+        if (!h.dia || !h.hora) {
+          return res.status(400).json({
+            mensaje: "Cada horario debe tener un día y una hora",
+          });
+        }
       }
 
-      // Validar entrenador si se proporciona
-      let entrenadorId = req.body.entrenador;
-      if (entrenadorId) {
-        if (!mongoose.Types.ObjectId.isValid(entrenadorId)) {
+      let entrenadorId = null;
+      if (entrenador) {
+        if (!mongoose.Types.ObjectId.isValid(entrenador)) {
           return res.status(400).json({ mensaje: "ID de entrenador inválido" });
         }
-        const entrenador = await Entrenador.findById(entrenadorId);
-        if (!entrenador) {
+
+        const entrenadorExistente = await Entrenador.findById(entrenador);
+        if (!entrenadorExistente) {
           return res.status(404).json({ mensaje: "Entrenador no encontrado" });
         }
+
+        entrenadorId = entrenador;
       }
 
       const nuevaClase = new Clase({
         nombre,
+        descripcion: descripcion || "",
+        horarios,
+        capacidad,
         entrenador: entrenadorId,
-        horario: horarioDate,
-        capacidad: Number(capacidad),
-        estado: req.body.estado || "activa",
-        descripcion: req.body.descripcion || "",
+        estado: estado || "activa",
+        creadoPor: req.usuario._id,
       });
+
       const claseGuardada = await nuevaClase.save();
-      console.log("Clase creada:", claseGuardada);
       res.status(201).json(claseGuardada);
     } catch (error) {
       console.error("Error al crear clase:", error.stack);
       res.status(500).json({
         mensaje: "Error al crear la clase",
-        detalle: error.message || "Error desconocido",
+        detalle: error.message,
       });
     }
   }
 );
 
-// Actualizar una clase (solo admin y recepcionista)
+// Actualizar una clase
 router.put(
   "/:id",
   authMiddleware,
   checkRole(["admin", "recepcionista"]),
   async (req, res) => {
     try {
-      console.log(
-        "Solicitud PUT recibida en /api/clases/:id:",
-        req.params.id,
-        req.body
-      );
-      const clase = await Clase.findById(req.params.id).populate("entrenador");
+      const clase = await Clase.findById(req.params.id);
       if (!clase) {
         return res.status(404).json({ mensaje: "Clase no encontrada" });
       }
 
-      // Validar y convertir horario a Date si se proporciona
-      let horario = clase.horario;
-      if (req.body.horario) {
-        horario = new Date(req.body.horario);
-        if (isNaN(horario.getTime())) {
-          return res.status(400).json({ mensaje: "Horario inválido" });
-        }
+      const { nombre, descripcion, horarios, capacidad, entrenador, estado } =
+        req.body;
+
+      if (horarios && (!Array.isArray(horarios) || horarios.length === 0)) {
+        return res.status(400).json({
+          mensaje: "Debe proporcionar al menos un horario válido",
+        });
       }
 
-      // Validar entrenador si se proporciona
-      let entrenadorId = req.body.entrenador || clase.entrenador;
-      if (entrenadorId && entrenadorId !== clase.entrenador) {
-        if (!mongoose.Types.ObjectId.isValid(entrenadorId)) {
+      if (horarios) {
+        for (const h of horarios) {
+          if (!h.dia || !h.hora) {
+            return res.status(400).json({
+              mensaje: "Cada horario debe tener un día y una hora",
+            });
+          }
+        }
+        clase.horarios = horarios;
+      }
+
+      if (entrenador) {
+        if (!mongoose.Types.ObjectId.isValid(entrenador)) {
           return res.status(400).json({ mensaje: "ID de entrenador inválido" });
         }
-        const entrenador = await Entrenador.findById(entrenadorId);
-        if (!entrenador) {
+
+        const entrenadorExistente = await Entrenador.findById(entrenador);
+        if (!entrenadorExistente) {
           return res.status(404).json({ mensaje: "Entrenador no encontrado" });
         }
+
+        clase.entrenador = entrenador;
       }
 
-      clase.nombre = req.body.nombre || clase.nombre;
-      clase.entrenador = entrenadorId;
-      clase.horario = horario;
-      clase.capacidad = req.body.capacidad || clase.capacidad;
-      clase.estado = req.body.estado || clase.estado;
-      clase.descripcion = req.body.descripcion || clase.descripcion;
+      clase.nombre = nombre || clase.nombre;
+      clase.descripcion = descripcion ?? clase.descripcion;
+      clase.capacidad = capacidad ?? clase.capacidad;
+      clase.estado = estado || clase.estado;
 
       const claseActualizada = await clase.save();
-      console.log("Clase actualizada:", claseActualizada);
       res.json(claseActualizada);
     } catch (error) {
       console.error("Error al actualizar clase:", error.stack);
       res.status(500).json({
         mensaje: "Error al actualizar la clase",
-        detalle: error.message || "Error desconocido",
+        detalle: error.message,
       });
     }
   }
 );
 
-// Eliminar una clase (solo admin)
+// Eliminar una clase
 router.delete(
   "/:id",
   authMiddleware,
@@ -181,7 +195,7 @@ router.delete(
     } catch (error) {
       res.status(500).json({
         mensaje: "Error al eliminar la clase",
-        detalle: error.message || "Error desconocido",
+        detalle: error.message,
       });
     }
   }
