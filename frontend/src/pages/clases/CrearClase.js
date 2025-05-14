@@ -46,7 +46,11 @@ const CrearClase = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevState) => ({ ...prevState, [name]: value }));
+    console.log(`Cambiando ${name} a:`, value); // Log para depurar
+    setFormData((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
   };
 
   const handleHorarioChange = (index, field, value) => {
@@ -114,7 +118,7 @@ const CrearClase = () => {
         decodedToken.sub ||
         decodedToken._id ||
         decodedToken.userId;
-      console.log("creadoPor extraído:", creadoPor); // Línea 155
+      console.log("creadoPor extraído:", creadoPor);
       if (!creadoPor) {
         setError(
           "No se pudo extraer el ID del usuario del token. Verifica la estructura del token."
@@ -129,7 +133,6 @@ const CrearClase = () => {
       return;
     }
 
-    // Construir datos a enviar
     const datosEnvio = {
       ...formData,
       capacidad: Number(formData.capacidad),
@@ -155,7 +158,7 @@ const CrearClase = () => {
 
   return (
     <div className="container mt-4">
-      <h2>Crear Clase</h2>
+      <h2>Clase de creación</h2>
 
       {isLoading && <Alert variant="info">Cargando...</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
@@ -287,7 +290,7 @@ const CrearClase = () => {
             </Form.Group>
 
             <Button variant="primary" type="submit" disabled={isLoading}>
-              Crear Clase
+              Clase de creación
             </Button>
             <Button
               variant="secondary"
