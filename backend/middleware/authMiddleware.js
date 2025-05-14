@@ -24,24 +24,26 @@ const protect = asyncHandler(async (req, res, next) => {
 
       // Buscar el usuario en la base de datos
       req.user = await User.findById(decoded.id).select("-password");
-      console.log("Usuario encontrado:", req.user);
-
       if (!req.user) {
         console.log("Usuario no encontrado para el ID:", decoded.id);
-        res.status(401);
-        throw new Error("No autorizado, usuario no encontrado");
+        return res
+          .status(401)
+          .json({ message: "No autorizado, usuario no encontrado" });
       }
+      console.log("Usuario encontrado:", req.user);
 
       next();
     } catch (error) {
       console.error("Error al verificar el token:", error.message);
-      res.status(401);
-      throw new Error("No autorizado, token inválido o expirado");
+      return res
+        .status(401)
+        .json({ message: "No autorizado, token inválido o expirado" });
     }
   } else {
     console.log("Encabezado Authorization no encontrado o mal formado");
-    res.status(401);
-    throw new Error("No autorizado, token no proporcionado");
+    return res
+      .status(401)
+      .json({ message: "No autorizado, token no proporcionado" });
   }
 });
 
@@ -54,8 +56,9 @@ const verificarRol = (rolesPermitidos) => {
 
     if (!user || !user.rol || !rolesPermitidos.includes(user.rol)) {
       console.log("Acceso denegado: Rol no autorizado para el usuario:", user);
-      res.status(403);
-      throw new Error("Acceso denegado: Rol no autorizado");
+      return res
+        .status(403)
+        .json({ message: "Acceso denegado: Rol no autorizado" });
     }
 
     next();
