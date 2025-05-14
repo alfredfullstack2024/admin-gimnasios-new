@@ -58,7 +58,7 @@ router.post(
   async (req, res) => {
     try {
       console.log("Cuerpo recibido:", req.body);
-      console.log("Usuario en req:", req.user); // Cambié req.usuario por req.user
+      console.log("Usuario en req:", req.user);
 
       const { nombre, descripcion, horario, capacidad, entrenador, estado } =
         req.body;
@@ -98,7 +98,6 @@ router.post(
         entrenadorId = entrenador;
       }
 
-      // Verificar que req.user._id exista
       if (!req.user || !req.user._id) {
         return res.status(401).json({
           mensaje: "Usuario no autenticado o ID no disponible",
@@ -113,7 +112,7 @@ router.post(
         capacidad,
         entrenador: entrenadorId,
         estado: estado || "activa",
-        creadoPor: req.user._id, // Cambié req.usuario._id por req.user._id
+        creadoPor: req.user._id,
       });
 
       const claseGuardada = await nuevaClase.save();
