@@ -13,7 +13,8 @@ import PrivateRoute from "./components/PrivateRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
-import ConsultarRutina from "./pages/ConsultarRutina"; // Página pública
+import ConsultarRutina from "./pages/ConsultarRutina";
+import ConsultaUsuario from "./pages/ConsultaUsuario";
 
 // Páginas Protegidas
 import Dashboard from "./pages/Dashboard";
@@ -49,10 +50,9 @@ import Contabilidad from "./pages/contabilidad/Contabilidad";
 import CrearTransaccion from "./pages/contabilidad/CrearTransaccion";
 import EditarTransaccion from "./pages/contabilidad/EditarTransaccion";
 
-// Clases
-import Clases from "./pages/Clases";
-import CrearClase from "./pages/clases/CrearClase";
-import EditarClase from "./pages/clases/EditarClase";
+// Sesiones (Nueva funcionalidad)
+import ListaSesiones from "./pages/sesiones/ListaSesiones";
+import CrearSesion from "./pages/sesiones/CrearSesion";
 
 // Usuarios
 import Usuarios from "./pages/Usuarios";
@@ -66,7 +66,7 @@ import RegistrarAsistencia from "./pages/asistencias/RegistrarAsistencia";
 // Rutinas
 import CrearRutina from "./pages/rutinas/CrearRutina";
 import AsignarRutina from "./pages/rutinas/AsignarRutina";
-import ConsultaUsuario from "./pages/ConsultaUsuario";
+
 // Indicadores
 import Indicadores from "./pages/Indicadores";
 
@@ -78,9 +78,8 @@ const App = () => {
           {/* Rutas Públicas */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/consultar-rutina" element={<ConsultarRutina />} />{" "}
+          <Route path="/consultar-rutina" element={<ConsultarRutina />} />
           <Route path="/consulta-usuario" element={<ConsultaUsuario />} />
-          {/* Ruta pública */}
           <Route
             path="/"
             element={
@@ -141,10 +140,9 @@ const App = () => {
                 element={<EditarTransaccion />}
               />
 
-              {/* Clases */}
-              <Route path="/clases" element={<Clases />} />
-              <Route path="/clases/crear" element={<CrearClase />} />
-              <Route path="/clases/editar/:id" element={<EditarClase />} />
+              {/* Sesiones */}
+              <Route path="/sesiones" element={<ListaSesiones />} />
+              <Route path="/sesiones/crear" element={<CrearSesion />} />
 
               {/* Asistencias */}
               <Route path="/asistencias" element={<Asistencias />} />
