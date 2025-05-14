@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const Usuario = require("../models/Usuario"); // Cambié 'User' por 'Usuario'
 
 // Middleware para verificar el token y cargar el usuario
 const authMiddleware = async (req, res, next) => {
@@ -30,7 +30,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // Buscar el usuario en la base de datos
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await Usuario.findById(decoded.id).select("-password");
     if (!user) {
       console.error("Usuario no encontrado para ID:", decoded.id);
       return res.status(401).json({ mensaje: "Usuario no encontrado" });
@@ -38,8 +38,8 @@ const authMiddleware = async (req, res, next) => {
 
     // Asegurar que req.user tenga el formato esperado
     req.user = {
-      id: user._id.toString(), // Aseguro que id sea un string
-      ...user.toObject(), // Incluyo el resto de las propiedades del usuario
+      id: user._id.toString(),
+      ...user.toObject(),
     };
     console.log("Usuario autenticado:", req.user);
     next();
