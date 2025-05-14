@@ -6,7 +6,7 @@ const {
   obtenerSesiones,
 } = require("../controllers/sesionController");
 
-router.post("/crear", authMiddleware, crearSesion);
-router.get("/", authMiddleware, obtenerSesiones);
+router.post("/sesiones/crear", authMiddleware, crearSesion);
+router.get("/sesiones", authMiddleware, obtenerSesiones);
 
 module.exports = router;
