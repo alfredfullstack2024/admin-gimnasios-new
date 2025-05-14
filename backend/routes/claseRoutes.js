@@ -57,13 +57,17 @@ router.post(
   checkRole(["admin", "recepcionista"]),
   async (req, res) => {
     try {
-      const { nombre, descripcion, horarios, capacidad, entrenador, estado } =
+      console.log("Cuerpo recibido:", req.body);
+      console.log("Usuario en req:", req.user); // Cambié req.usuario por req.user
+
+      const { nombre, descripcion, horario, capacidad, entrenador, estado } =
         req.body;
 
+      // Validar campos requeridos
       if (
         !nombre ||
-        !Array.isArray(horarios) ||
-        horarios.length === 0 ||
+        !Array.isArray(horario) ||
+        horario.length === 0 ||
         !capacidad
       ) {
         return res.status(400).json({
@@ -74,7 +78,7 @@ router.post(
       }
 
       // Validar estructura de cada horario
-      for (const h of horarios) {
+      for (const h of horario) {
         if (!h.dia || !h.hora) {
           return res.status(400).json({
             mensaje: "Cada horario debe tener un día y una hora",
@@ -87,23 +91,29 @@ router.post(
         if (!mongoose.Types.ObjectId.isValid(entrenador)) {
           return res.status(400).json({ mensaje: "ID de entrenador inválido" });
         }
-
         const entrenadorExistente = await Entrenador.findById(entrenador);
         if (!entrenadorExistente) {
           return res.status(404).json({ mensaje: "Entrenador no encontrado" });
         }
-
         entrenadorId = entrenador;
+      }
+
+      // Verificar que req.user._id exista
+      if (!req.user || !req.user._id) {
+        return res.status(401).json({
+          mensaje: "Usuario no autenticado o ID no disponible",
+          detalle: "Verifica el middleware de autenticación",
+        });
       }
 
       const nuevaClase = new Clase({
         nombre,
         descripcion: descripcion || "",
-        horarios,
+        horario,
         capacidad,
         entrenador: entrenadorId,
         estado: estado || "activa",
-        creadoPor: req.usuario._id,
+        creadoPor: req.user._id, // Cambié req.usuario._id por req.user._id
       });
 
       const claseGuardada = await nuevaClase.save();
@@ -130,36 +140,34 @@ router.put(
         return res.status(404).json({ mensaje: "Clase no encontrada" });
       }
 
-      const { nombre, descripcion, horarios, capacidad, entrenador, estado } =
+      const { nombre, descripcion, horario, capacidad, entrenador, estado } =
         req.body;
 
-      if (horarios && (!Array.isArray(horarios) || horarios.length === 0)) {
+      if (horario && (!Array.isArray(horario) || horario.length === 0)) {
         return res.status(400).json({
           mensaje: "Debe proporcionar al menos un horario válido",
         });
       }
 
-      if (horarios) {
-        for (const h of horarios) {
+      if (horario) {
+        for (const h of horario) {
           if (!h.dia || !h.hora) {
             return res.status(400).json({
               mensaje: "Cada horario debe tener un día y una hora",
             });
           }
         }
-        clase.horarios = horarios;
+        clase.horario = horario;
       }
 
       if (entrenador) {
         if (!mongoose.Types.ObjectId.isValid(entrenador)) {
           return res.status(400).json({ mensaje: "ID de entrenador inválido" });
         }
-
         const entrenadorExistente = await Entrenador.findById(entrenador);
         if (!entrenadorExistente) {
           return res.status(404).json({ mensaje: "Entrenador no encontrado" });
         }
-
         clase.entrenador = entrenador;
       }
 
