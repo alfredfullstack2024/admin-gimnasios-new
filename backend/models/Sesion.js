@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const sesionSchema = new mongoose.Schema({
   profesorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Entrenador", // Cambiado a "Entrenador" en lugar de "Usuario"
+    ref: "Entrenador",
     required: true,
   },
   fecha: {
