@@ -8,7 +8,7 @@ const CrearClase = () => {
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
-    horario: [{ dia: "", hora: "" }], // Cambiado de 'horarios' a 'horario'
+    horario: [{ dia: "", hora: "" }],
     capacidad: 1,
     entrenador: "",
     estado: "activa",
