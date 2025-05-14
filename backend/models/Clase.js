@@ -1,37 +1,16 @@
 const mongoose = require("mongoose");
 
-const horarioSchema = new mongoose.Schema({
-  dia: {
-    type: String,
-    required: true,
-    enum: [
-      "lunes",
-      "martes",
-      "miércoles",
-      "jueves",
-      "viernes",
-      "sábado",
-      "domingo",
-    ],
+const claseSchema = new mongoose.Schema(
+  {
+    nombre: { type: String, required: true },
+    horario: [{ dia: String, hora: String }],
+    capacidad: { type: Number, required: true },
+    entrenador: { type: mongoose.Schema.Types.ObjectId, ref: "Entrenador" },
+    estado: { type: String, enum: ["activa", "inactiva"], default: "activa" },
   },
-  hora: {
-    type: String, // Formato "HH:mm"
-    required: true,
-  },
-});
-
-const claseSchema = new mongoose.Schema({
-  nombre: { type: String, required: true },
-  descripcion: { type: String },
-  entrenador: { type: mongoose.Schema.Types.ObjectId, ref: "Entrenador" },
-  capacidad: { type: Number, required: true },
-  estado: { type: String, default: "activa", enum: ["activa", "inactiva"] },
-  horario: [horarioSchema],
-  creadoPor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Usuario",
-    required: true,
-  }, // Añadí este campo
-});
+  {
+    timestamps: true,
+  }
+);
 
 module.exports = mongoose.model("Clase", claseSchema);
