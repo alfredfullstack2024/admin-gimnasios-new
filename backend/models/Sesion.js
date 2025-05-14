@@ -1,18 +1,31 @@
 const mongoose = require("mongoose");
 
-const sesionSchema = new mongoose.Schema(
-  {
-    profesor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Usuario",
-      required: true,
-    },
-    horarios: [{ dia: String, hora: String }],
-    estado: { type: String, enum: ["activa", "inactiva"], default: "activa" },
+const sesionSchema = new mongoose.Schema({
+  profesorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Entrenador", // Cambiado a "Entrenador" en lugar de "Usuario"
+    required: true,
   },
-  {
-    timestamps: true,
-  }
-);
+  fecha: {
+    type: Date,
+    required: true,
+  },
+  horaInicio: {
+    type: String,
+    required: true,
+  },
+  horaFin: {
+    type: String,
+    required: true,
+  },
+  tipo: {
+    type: String,
+    required: true,
+  },
+  descripcion: {
+    type: String,
+    required: true,
+  },
+});
 
 module.exports = mongoose.model("Sesion", sesionSchema);
