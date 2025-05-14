@@ -26,7 +26,12 @@ const claseSchema = new mongoose.Schema({
   entrenador: { type: mongoose.Schema.Types.ObjectId, ref: "Entrenador" },
   capacidad: { type: Number, required: true },
   estado: { type: String, default: "activa", enum: ["activa", "inactiva"] },
-  horario: [horarioSchema], // <- CAMBIO AQUÍ
+  horario: [horarioSchema],
+  creadoPor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Usuario",
+    required: true,
+  }, // Añadí este campo
 });
 
 module.exports = mongoose.model("Clase", claseSchema);
