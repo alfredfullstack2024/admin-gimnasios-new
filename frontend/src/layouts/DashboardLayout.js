@@ -13,6 +13,8 @@ import {
   FaDumbbell,
   FaUsersCog,
   FaChartPie,
+  FaPlus,
+  FaSearch,
 } from "react-icons/fa";
 
 const DashboardLayout = () => {
@@ -71,14 +73,20 @@ const DashboardLayout = () => {
           <Nav.Link as={NavLink} to="/contabilidad" className="text-white">
             <FaChartBar className="me-2" /> Contabilidad
           </Nav.Link>
-          <Nav.Link as={NavLink} to="/sesiones" className="text-white">
-            <FaDumbbell className="me-2" /> Sesiones
+          <Nav.Link as={NavLink} to="/clases" className="text-white">
+            <FaDumbbell className="me-2" /> Clases
           </Nav.Link>
           <Nav.Link as={NavLink} to="/asistencias" className="text-white">
             <FaUserCheck className="me-2" /> Asistencias
           </Nav.Link>
           <Nav.Link as={NavLink} to="/rutinas/crear" className="text-white">
-            <FaDumbbell className="me-2" /> Rutinas
+            <FaDumbbell className="me-2" /> Crear rutina
+          </Nav.Link>
+          <Nav.Link as={NavLink} to="/rutinas/asignar" className="text-white">
+            <FaPlus className="me-2" /> Asignar rutina
+          </Nav.Link>
+          <Nav.Link as={NavLink} to="/rutinas/consultar" className="text-white">
+            <FaSearch className="me-2" /> Consultar rutina
           </Nav.Link>
           <Nav.Link as={NavLink} to="/usuarios" className="text-white">
             <FaUsersCog className="me-2" /> Usuarios
