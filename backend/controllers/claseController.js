@@ -4,51 +4,60 @@ const RegistroClase = require("../models/RegistroClase");
 exports.obtenerClasesDisponibles = async (req, res) => {
   try {
     console.log("Solicitud GET /api/clases/disponibles recibida");
-    const entrenadores = await Entrenador.find();
+    const entrenadores = await Entrenador.find().lean();
     if (!entrenadores || entrenadores.length === 0) {
       console.log("No se encontraron entrenadores en la base de datos.");
       return res
         .status(404)
         .json({ message: "No se encontraron entrenadores." });
     }
+
     const clasesDisponibles = entrenadores
       .flatMap((entrenador) =>
         entrenador.clases && Array.isArray(entrenador.clases)
           ? entrenador.clases.flatMap((clase) =>
               clase.dias && Array.isArray(clase.dias)
                 ? clase.dias.map((dia) => ({
-                    entrenadorId: entrenador._id,
+                    entrenadorId: entrenador._id.toString(),
                     entrenadorNombre: entrenador.nombre,
                     especialidad: entrenador.especialidad,
                     nombreClase: clase.nombreClase,
                     dia: dia.dia,
                     horarioInicio: dia.horarioInicio,
                     horarioFin: dia.horarioFin,
-                    capacidadMaxima: clase.capacidadMaxima || 10, // Valor por defecto si no está definido
+                    capacidadMaxima: clase.capacidadMaxima || 10,
                   }))
                 : []
             )
           : []
       )
       .filter((clase) => clase);
-    console.log("Clases disponibles:", clasesDisponibles);
+
     if (clasesDisponibles.length === 0) {
+      console.log("No se encontraron clases disponibles después de procesar.");
       return res
         .status(404)
         .json({ message: "No se encontraron clases disponibles." });
     }
+
+    console.log("Clases disponibles enviadas:", clasesDisponibles);
     res.json(clasesDisponibles);
   } catch (error) {
     console.error("Error al obtener clases disponibles:", error.stack);
     res
       .status(500)
-      .json({ message: "Error interno del servidor al obtener clases." });
+      .json({
+        message: "Error interno del servidor al obtener clases.",
+        error: error.message,
+      });
   }
 };
 
 exports.registrarClienteEnClase = async (req, res) => {
   const {
     numeroIdentificacion,
+    nombre,
+    apellido,
     entrenadorId,
     nombreClase,
     dia,
@@ -58,6 +67,8 @@ exports.registrarClienteEnClase = async (req, res) => {
 
   if (
     !numeroIdentificacion ||
+    !nombre ||
+    !apellido ||
     !entrenadorId ||
     !nombreClase ||
     !dia ||
@@ -70,8 +81,16 @@ exports.registrarClienteEnClase = async (req, res) => {
   }
 
   try {
-    const entrenador = await Entrenador.findById(entrenadorId);
+    const entrenador = await Entrenador.findById(entrenadorId).lean();
+    if (!entrenador) {
+      return res.status(404).json({ message: "Entrenador no encontrado." });
+    }
+
     const clase = entrenador.clases.find((c) => c.nombreClase === nombreClase);
+    if (!clase) {
+      return res.status(404).json({ message: "Clase no encontrada." });
+    }
+
     const registros = await RegistroClase.find({
       entrenadorId,
       nombreClase,
@@ -87,6 +106,8 @@ exports.registrarClienteEnClase = async (req, res) => {
 
     const registro = new RegistroClase({
       numeroIdentificacion,
+      nombre, // Nuevo campo
+      apellido, // Nuevo campo
       entrenadorId,
       nombreClase,
       dia,
@@ -106,12 +127,21 @@ exports.consultarClasesPorNumeroIdentificacion = async (req, res) => {
   const { numeroIdentificacion } = req.params;
 
   try {
-    const registros = await RegistroClase.find({ numeroIdentificacion });
+    const registros = await RegistroClase.find({ numeroIdentificacion }).lean();
+    if (!registros || registros.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No se encontraron registros para este cliente." });
+    }
+
     const clasesConDetalles = await Promise.all(
       registros.map(async (registro) => {
-        const entrenador = await Entrenador.findById(registro.entrenadorId);
+        const entrenador = await Entrenador.findById(
+          registro.entrenadorId
+        ).lean();
         return {
-          entrenadorNombre: entrenador.nombre,
+          nombreCompleto: `${registro.nombre} ${registro.apellido}`, // Nuevo campo combinado
+          entrenadorNombre: entrenador ? entrenador.nombre : "Desconocido",
           nombreClase: registro.nombreClase,
           dia: registro.dia,
           horarioInicio: registro.horarioInicio,
@@ -122,6 +152,8 @@ exports.consultarClasesPorNumeroIdentificacion = async (req, res) => {
     res.json(clasesConDetalles);
   } catch (error) {
     console.error("Error al consultar clases:", error.stack);
-    res.status(500).json({ message: "Error interno del servidor." });
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor.", error: error.message });
   }
 };
