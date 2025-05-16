@@ -5,23 +5,30 @@ import {
   obtenerClasesDisponibles,
   registrarClienteEnClase,
   obtenerClientes,
-} from "../../api/axios";
+} from "../api/axios";
 
 const ListaClases = () => {
   const [clases, setClases] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [clienteId, setClienteId] = useState("");
+  const [numeroIdentificacion, setNumeroIdentificacion] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setError("Debes iniciar sesión para ver las clases.");
+          setLoading(false);
+          return;
+        }
+        const config = { headers: { Authorization: `Bearer ${token}` } };
         const [clasesResponse, clientesResponse] = await Promise.all([
-          obtenerClasesDisponibles(),
-          obtenerClientes(),
+          obtenerClasesDisponibles(config),
+          obtenerClientes(config),
         ]);
         setClases(clasesResponse.data || []);
         setClientes(clientesResponse.data || []);
@@ -35,23 +42,39 @@ const ListaClases = () => {
   }, []);
 
   const handleRegistrar = async (clase) => {
-    if (!clienteId) {
+    if (!numeroIdentificacion) {
       setError("Por favor, seleccione un cliente.");
       return;
     }
 
     try {
-      await registrarClienteEnClase({
-        clienteId,
-        entrenadorId: clase.entrenadorId,
-        nombreClase: clase.nombreClase,
-        dia: clase.dia,
-        horarioInicio: clase.horarioInicio,
-        horarioFin: clase.horarioFin,
-      });
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      await registrarClienteEnClase(
+        {
+          numeroIdentificacion,
+          entrenadorId: clase.entrenadorId,
+          nombreClase: clase.nombreClase,
+          dia: clase.dia,
+          horarioInicio: clase.horarioInicio,
+          horarioFin: clase.horarioFin,
+        },
+        config
+      );
       alert("Cliente registrado exitosamente en la clase.");
+      setClases(
+        clases.map((c) =>
+          c.entrenadorId === clase.entrenadorId &&
+          c.nombreClase === clase.nombreClase &&
+          c.dia === clase.dia &&
+          c.horarioInicio === clase.horarioInicio &&
+          c.horarioFin === clase.horarioFin
+            ? { ...c, capacidadMaxima: c.capacidadMaxima - 1 }
+            : c
+        )
+      );
     } catch (err) {
-      setError(err.message || "Error al registrar el cliente.");
+      setError(err.response?.data?.message || "Error al registrar el cliente.");
     }
   };
 
@@ -65,13 +88,13 @@ const ListaClases = () => {
         <Form.Label>Seleccionar Cliente</Form.Label>
         <Form.Control
           as="select"
-          value={clienteId}
-          onChange={(e) => setClienteId(e.target.value)}
+          value={numeroIdentificacion}
+          onChange={(e) => setNumeroIdentificacion(e.target.value)}
           required
         >
           <option value="">Seleccione un cliente</option>
           {clientes.map((cliente) => (
-            <option key={cliente._id} value={cliente._id}>
+            <option key={cliente._id} value={cliente.numeroIdentificacion}>
               {cliente.nombre}
             </option>
           ))}
@@ -84,9 +107,11 @@ const ListaClases = () => {
           <thead>
             <tr>
               <th>Entrenador</th>
+              <th>Especialidad</th>
               <th>Clase</th>
               <th>Día</th>
               <th>Horario</th>
+              <th>Capacidad Disponible</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -94,14 +119,20 @@ const ListaClases = () => {
             {clases.map((clase, index) => (
               <tr key={index}>
                 <td>{clase.entrenadorNombre}</td>
+                <td>{clase.especialidad}</td>
                 <td>{clase.nombreClase}</td>
                 <td>{clase.dia}</td>
                 <td>{`${clase.horarioInicio} - ${clase.horarioFin}`}</td>
                 <td>
+                  {clase.capacidadMaxima > 0 ? clase.capacidadMaxima : "Lleno"}
+                </td>
+                <td>
                   <Button
                     variant="primary"
                     onClick={() => handleRegistrar(clase)}
-                    disabled={!clienteId}
+                    disabled={
+                      clase.capacidadMaxima <= 0 || !numeroIdentificacion
+                    }
                   >
                     Registrarse
                   </Button>
