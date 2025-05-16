@@ -1,43 +1,57 @@
 import React, { useState, useEffect } from "react";
-import { Container, Table, Button, Form } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import {
+  Container,
+  Table,
+  Button,
+  Form,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
 import {
   obtenerClasesDisponibles,
   registrarClienteEnClase,
   obtenerClientes,
-} from "../api/axios";
+} from "../../api/axios";
 
 const ListaClases = () => {
   const [clases, setClases] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [numeroIdentificacion, setNumeroIdentificacion] = useState("");
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const token = localStorage.getItem("token");
+
         if (!token) {
           setError("Debes iniciar sesión para ver las clases.");
           setLoading(false);
           return;
         }
+
         const config = { headers: { Authorization: `Bearer ${token}` } };
+
         const [clasesResponse, clientesResponse] = await Promise.all([
           obtenerClasesDisponibles(config),
           obtenerClientes(config),
         ]);
+
         setClases(clasesResponse.data || []);
         setClientes(clientesResponse.data || []);
+        setError(null);
       } catch (err) {
-        setError(err.message || "No se pudieron cargar las clases.");
+        setError(
+          err.response?.data?.message || "No se pudieron cargar las clases."
+        );
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
@@ -50,6 +64,7 @@ const ListaClases = () => {
     try {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
+
       await registrarClienteEnClase(
         {
           numeroIdentificacion,
@@ -61,9 +76,12 @@ const ListaClases = () => {
         },
         config
       );
-      alert("Cliente registrado exitosamente en la clase.");
-      setClases(
-        clases.map((c) =>
+
+      setSuccess("Cliente registrado exitosamente en la clase.");
+      setError(null);
+
+      setClases((prev) =>
+        prev.map((c) =>
           c.entrenadorId === clase.entrenadorId &&
           c.nombreClase === clase.nombreClase &&
           c.dia === clase.dia &&
@@ -75,72 +93,90 @@ const ListaClases = () => {
       );
     } catch (err) {
       setError(err.response?.data?.message || "Error al registrar el cliente.");
+      setSuccess(null);
     }
   };
 
-  if (loading) return <p>Cargando clases...</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
-
   return (
-    <Container>
-      <h2>Lista de Clases Disponibles</h2>
-      <Form.Group className="mb-3">
-        <Form.Label>Seleccionar Cliente</Form.Label>
-        <Form.Control
-          as="select"
-          value={numeroIdentificacion}
-          onChange={(e) => setNumeroIdentificacion(e.target.value)}
-          required
-        >
-          <option value="">Seleccione un cliente</option>
-          {clientes.map((cliente) => (
-            <option key={cliente._id} value={cliente.numeroIdentificacion}>
-              {cliente.nombre}
-            </option>
-          ))}
-        </Form.Control>
-      </Form.Group>
-      {clases.length === 0 ? (
-        <p>No hay clases disponibles.</p>
-      ) : (
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Entrenador</th>
-              <th>Especialidad</th>
-              <th>Clase</th>
-              <th>Día</th>
-              <th>Horario</th>
-              <th>Capacidad Disponible</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clases.map((clase, index) => (
-              <tr key={index}>
-                <td>{clase.entrenadorNombre}</td>
-                <td>{clase.especialidad}</td>
-                <td>{clase.nombreClase}</td>
-                <td>{clase.dia}</td>
-                <td>{`${clase.horarioInicio} - ${clase.horarioFin}`}</td>
-                <td>
-                  {clase.capacidadMaxima > 0 ? clase.capacidadMaxima : "Lleno"}
-                </td>
-                <td>
-                  <Button
-                    variant="primary"
-                    onClick={() => handleRegistrar(clase)}
-                    disabled={
-                      clase.capacidadMaxima <= 0 || !numeroIdentificacion
-                    }
-                  >
-                    Registrarse
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+    <Container className="mt-4">
+      <h2 className="mb-4">Lista de Clases Disponibles</h2>
+
+      {loading && (
+        <div className="text-center">
+          <Spinner animation="border" variant="primary" />
+          <p className="mt-2">Cargando clases...</p>
+        </div>
+      )}
+
+      {error && <Alert variant="danger">{error}</Alert>}
+      {success && <Alert variant="success">{success}</Alert>}
+
+      {!loading && (
+        <>
+          <Form.Group className="mb-3">
+            <Form.Label>Seleccionar Cliente</Form.Label>
+            <Form.Select
+              value={numeroIdentificacion}
+              onChange={(e) => setNumeroIdentificacion(e.target.value)}
+              required
+            >
+              <option value="">Seleccione un cliente</option>
+              {clientes.map((cliente) => (
+                <option key={cliente._id} value={cliente.numeroIdentificacion}>
+                  {cliente.nombre}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          {clases.length === 0 ? (
+            <p>No hay clases disponibles.</p>
+          ) : (
+            <Table striped bordered hover responsive>
+              <thead>
+                <tr>
+                  <th>Entrenador</th>
+                  <th>Especialidad</th>
+                  <th>Clase</th>
+                  <th>Día</th>
+                  <th>Horario</th>
+                  <th>Capacidad Disponible</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clases.map((clase, index) => (
+                  <tr key={index}>
+                    <td>{clase.entrenadorNombre}</td>
+                    <td>{clase.especialidad}</td>
+                    <td>{clase.nombreClase}</td>
+                    <td>{clase.dia}</td>
+                    <td>
+                      {clase.horarioInicio} - {clase.horarioFin}
+                    </td>
+                    <td>
+                      {clase.capacidadMaxima > 0
+                        ? clase.capacidadMaxima
+                        : "Lleno"}
+                    </td>
+                    <td>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleRegistrar(clase)}
+                        disabled={
+                          clase.capacidadMaxima <= 0 || !numeroIdentificacion
+                        }
+                      >
+                        Registrarse
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </>
       )}
     </Container>
   );
