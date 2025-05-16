@@ -56,8 +56,8 @@ api.interceptors.response.use(
 
 // Clientes
 export const obtenerClientes = (config) => api.get("/clientes", config);
-export const consultarClientePorCedula = (numeroIdentificacion) =>
-  api.get(`/clientes/consultar/${numeroIdentificacion}`);
+export const consultarClientePorCedula = (numeroIdentificacion, config) =>
+  api.get(`/clientes/consultar/${numeroIdentificacion}`, config);
 export const obtenerClientePorId = (id, config) =>
   api.get(`/clientes/${id}`, config);
 export const crearCliente = (data, config) =>
@@ -92,8 +92,8 @@ export const eliminarMembresia = (id, config) =>
 // Pagos
 export const obtenerPagos = (params, config) =>
   api.get("/pagos", { ...config, params });
-export const consultarPagosPorCedula = (numeroIdentificacion) =>
-  api.get(`/pagos/consultar/${numeroIdentificacion}`);
+export const consultarPagosPorCedula = (numeroIdentificacion, config) =>
+  api.get(`/pagos/consultar/${numeroIdentificacion}`, config);
 export const obtenerPagoPorId = (id, config) => api.get(`/pagos/${id}`, config);
 export const crearPago = (data, config) => api.post("/pagos", data, config);
 export const editarPago = (id, data, config) =>
@@ -144,6 +144,10 @@ export const obtenerClasesDisponibles = (config) =>
   api.get("/clases/disponibles", config);
 export const registrarClienteEnClase = (data, config) =>
   api.post("/clases/registrar", data, config);
+export const consultarClasesPorNumeroIdentificacion = (
+  numeroIdentificacion,
+  config
+) => api.get(`/clases/consultar/${numeroIdentificacion}`, config);
 
 // Usuarios
 export const obtenerUsuarios = (config) => api.get("/usuarios", config);
