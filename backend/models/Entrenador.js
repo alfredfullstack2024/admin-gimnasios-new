@@ -1,22 +1,24 @@
 const mongoose = require("mongoose");
 
-const HorarioSchema = new mongoose.Schema({
-  dia: { type: String, required: true }, // Ejemplo: "Lunes"
-  horaInicio: { type: String, required: true }, // Ejemplo: "08:00"
-  horaFin: { type: String, required: true }, // Ejemplo: "10:00"
+const entrenadorSchema = new mongoose.Schema({
+  nombre: { type: String, required: true },
+  apellido: { type: String, required: true },
+  correoElectronico: { type: String, required: true },
+  telefono: { type: String, required: true },
+  especialidad: { type: String, required: true },
+  clases: [
+    {
+      nombreClase: { type: String, required: true },
+      dias: [
+        {
+          dia: { type: String, required: true },
+          horarioInicio: { type: String, required: true },
+          horarioFin: { type: String, required: true },
+        },
+      ],
+      capacidadMaxima: { type: Number, required: true, default: 10 },
+    },
+  ],
 });
 
-const EntrenadorSchema = new mongoose.Schema(
-  {
-    nombre: { type: String, required: true },
-    apellido: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    telefono: { type: String },
-    especialidad: { type: String },
-    horarios: [HorarioSchema], // Array de horarios
-    creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Añadido para relacionar con el usuario que creó el entrenador
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model("Entrenador", EntrenadorSchema);
+module.exports = mongoose.model("Entrenador", entrenadorSchema);
