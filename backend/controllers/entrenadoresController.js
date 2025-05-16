@@ -24,26 +24,44 @@ const agregarEntrenador = async (req, res) => {
     console.log("Datos recibidos:", req.body);
     console.log("Usuario autenticado:", req.user);
 
-    const { nombre, apellido, email, telefono, especialidad, horarios } =
-      req.body;
+    const {
+      nombre,
+      apellido,
+      correo,
+      telefono,
+      especialidad,
+      clases,
+      horarios,
+    } = req.body;
 
-    if (!nombre || !apellido || !email) {
+    if (!nombre || !apellido || !correo) {
       return res
         .status(400)
-        .json({ mensaje: "Nombre, apellido y email son requeridos" });
+        .json({ mensaje: "Nombre, apellido y correo son requeridos" });
     }
 
     if (!req.user || !req.user._id) {
       return res.status(401).json({ mensaje: "Usuario no autenticado" });
     }
 
+    // Transformar horarios a clases si se envía horarios pero no clases
+    let clasesFinales = clases || [];
+    if (horarios && Array.isArray(horarios) && !clases) {
+      console.log("Transformando horarios a clases...");
+      clasesFinales = horarios.map((horario) => ({
+        nombreClase: "Entrenamiento General",
+        dias: Array.isArray(horario) ? horario : [horario],
+        capacidadMaxima: 10,
+      }));
+    }
+
     const entrenador = new Entrenador({
       nombre,
       apellido,
-      email,
+      correo,
       telefono,
       especialidad,
-      horarios: horarios || [], // Añadimos los horarios, si no hay, se usa un array vacío
+      clases: clasesFinales,
       creadoPor: req.user._id,
     });
 
@@ -51,10 +69,11 @@ const agregarEntrenador = async (req, res) => {
     console.log("Entrenador guardado:", savedEntrenador);
     res.status(201).json(savedEntrenador);
   } catch (error) {
-    console.error("Error al agregar entrenador:", error.message);
+    console.error("Error al agregar entrenador:", error.message, error.stack);
     res.status(500).json({
       mensaje: "Error al agregar entrenador",
       detalle: error.message,
+      stack: error.stack,
     });
   }
 };
@@ -83,8 +102,15 @@ const obtenerEntrenadorPorId = async (req, res) => {
 const editarEntrenador = async (req, res) => {
   try {
     console.log("Iniciando editarEntrenador...");
-    const { nombre, apellido, email, telefono, especialidad, horarios } =
-      req.body;
+    const {
+      nombre,
+      apellido,
+      correo,
+      telefono,
+      especialidad,
+      clases,
+      horarios,
+    } = req.body;
 
     const entrenador = await Entrenador.findById(req.params.id);
     if (!entrenador) {
@@ -92,15 +118,26 @@ const editarEntrenador = async (req, res) => {
       return res.status(404).json({ mensaje: "Entrenador no encontrado" });
     }
 
+    // Transformar horarios a clases si se envía horarios pero no clases
+    let clasesFinales = clases || [];
+    if (horarios && Array.isArray(horarios) && !clases) {
+      console.log("Transformando horarios a clases...");
+      clasesFinales = horarios.map((horario) => ({
+        nombreClase: "Entrenamiento General",
+        dias: Array.isArray(horario) ? horario : [horario],
+        capacidadMaxima: 10,
+      }));
+    }
+
     const updatedEntrenador = await Entrenador.findByIdAndUpdate(
       req.params.id,
       {
         nombre,
         apellido,
-        email,
+        correo,
         telefono,
         especialidad,
-        horarios: horarios || [], // Añadimos los horarios al editar
+        clases: clasesFinales,
         updatedAt: new Date(),
       },
       { new: true, runValidators: true }
@@ -109,10 +146,15 @@ const editarEntrenador = async (req, res) => {
     console.log("Entrenador actualizado:", updatedEntrenador);
     res.json(updatedEntrenador);
   } catch (error) {
-    console.error("Error al actualizar entrenador:", error.message);
+    console.error(
+      "Error al actualizar entrenador:",
+      error.message,
+      error.stack
+    );
     res.status(500).json({
       mensaje: "Error al actualizar entrenador",
       detalle: error.message,
+      stack: error.stack,
     });
   }
 };
