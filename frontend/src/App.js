@@ -50,9 +50,8 @@ import Contabilidad from "./pages/contabilidad/Contabilidad";
 import CrearTransaccion from "./pages/contabilidad/CrearTransaccion";
 import EditarTransaccion from "./pages/contabilidad/EditarTransaccion";
 
-// Sesiones (Nueva funcionalidad)
-import ListaSesiones from "./pages/sesiones/ListaSesiones";
-import CrearSesion from "./pages/sesiones/CrearSesion";
+// Clases (Nueva funcionalidad)
+import ListaClases from "./pages/sesiones/ListaClases";
 
 // Usuarios
 import Usuarios from "./pages/Usuarios";
@@ -140,9 +139,8 @@ const App = () => {
                 element={<EditarTransaccion />}
               />
 
-              {/* Sesiones */}
-              <Route path="/sesiones" element={<ListaSesiones />} />
-              <Route path="/sesiones/crear" element={<CrearSesion />} />
+              {/* Clases */}
+              <Route path="/clases" element={<ListaClases />} />
 
               {/* Asistencias */}
               <Route path="/asistencias" element={<Asistencias />} />
@@ -154,6 +152,7 @@ const App = () => {
               {/* Rutinas */}
               <Route path="/rutinas/crear" element={<CrearRutina />} />
               <Route path="/rutinas/asignar" element={<AsignarRutina />} />
+              <Route path="/rutinas/consultar" element={<ConsultarRutina />} />
 
               {/* Usuarios */}
               <Route path="/usuarios" element={<Usuarios />} />
