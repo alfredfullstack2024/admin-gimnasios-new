@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Container, Form, Button, Table } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
 import {
   consultarRutinaPorNumeroIdentificacion,
   consultarClasesPorNumeroIdentificacion,
@@ -11,14 +10,15 @@ const ConsultarRutina = () => {
   const [rutinas, setRutinas] = useState([]);
   const [clases, setClases] = useState([]);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        setError("Debes iniciar sesión para consultar.");
+        setError(
+          "Debes iniciar sesión para consultar. Por favor, inicia sesión."
+        );
         return;
       }
 
@@ -31,7 +31,10 @@ const ConsultarRutina = () => {
       setClases(clasesResponse.data || []);
       setError(null);
     } catch (err) {
-      setError(err.message || "Error al consultar datos.");
+      setError(
+        err.message ||
+          "Error al consultar datos. Asegúrate de estar autenticado."
+      );
     }
   };
 
