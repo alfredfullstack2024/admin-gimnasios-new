@@ -1,115 +1,67 @@
-const Clase = require("../models/Clase");
-const mongoose = require("mongoose");
+const Entrenador = require("../models/Entrenador");
+const RegistroClase = require("../models/RegistroClase");
 
-// Crear una nueva clase
-const crearClase = async (req, res) => {
+exports.obtenerClasesDisponibles = async (req, res) => {
   try {
-    const { nombre, horario, capacidad, entrenador, estado } = req.body;
-    if (!nombre || !horario || !Array.isArray(horario) || !capacidad) {
-      return res
-        .status(400)
-        .json({
-          mensaje: "Faltan campos requeridos: nombre, horario y capacidad",
-        });
-    }
-
-    const nuevaClase = new Clase({
-      nombre,
-      horario,
-      capacidad: Number(capacidad),
-      entrenador: entrenador || null,
-      estado: estado || "activa",
-    });
-
-    const claseGuardada = await nuevaClase.save();
-    res.status(201).json(claseGuardada);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ mensaje: "Error al crear la clase", error: error.message });
-  }
-};
-
-// Obtener todas las clases
-const obtenerClases = async (req, res) => {
-  try {
-    const clases = await Clase.find().populate("entrenador", "nombre apellido");
-    res.status(200).json(clases);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ mensaje: "Error al obtener las clases", error: error.message });
-  }
-};
-
-// Obtener una clase por ID
-const obtenerClasePorId = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ mensaje: "ID inválido" });
-    }
-    const clase = await Clase.findById(id).populate(
-      "entrenador",
-      "nombre apellido"
+    console.log("Solicitud GET /api/clases/disponibles recibida");
+    const entrenadores = await Entrenador.find();
+    const clasesDisponibles = entrenadores.flatMap((entrenador) =>
+      entrenador.clases.flatMap((clase) =>
+        clase.dias.map((dia) => ({
+          entrenadorId: entrenador._id,
+          entrenadorNombre: entrenador.nombre,
+          nombreClase: clase.nombreClase,
+          dia: dia.dia,
+          horarioInicio: dia.horarioInicio,
+          horarioFin: dia.horarioFin,
+        }))
+      )
     );
-    if (!clase) return res.status(404).json({ mensaje: "Clase no encontrada" });
-    res.status(200).json(clase);
+    console.log("Clases disponibles:", clasesDisponibles);
+    res.json(clasesDisponibles);
   } catch (error) {
-    res
-      .status(500)
-      .json({ mensaje: "Error al obtener la clase", error: error.message });
+    console.error("Error al obtener clases disponibles:", error.message);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Actualizar una clase
-const actualizarClase = async (req, res) => {
+exports.registrarClienteEnClase = async (req, res) => {
+  const {
+    clienteId,
+    entrenadorId,
+    nombreClase,
+    dia,
+    horarioInicio,
+    horarioFin,
+  } = req.body;
+
+  if (
+    !clienteId ||
+    !entrenadorId ||
+    !nombreClase ||
+    !dia ||
+    !horarioInicio ||
+    !horarioFin
+  ) {
+    return res
+      .status(400)
+      .json({ message: "Todos los campos son requeridos." });
+  }
+
   try {
-    const { id } = req.params;
-    const { nombre, horario, capacidad, entrenador, estado } = req.body;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ mensaje: "ID inválido" });
-    }
-    const clase = await Clase.findById(id);
-    if (!clase) return res.status(404).json({ mensaje: "Clase no encontrada" });
-
-    clase.nombre = nombre || clase.nombre;
-    clase.horario = horario || clase.horario;
-    clase.capacidad =
-      capacity !== undefined ? Number(capacity) : clase.capacidad;
-    clase.entrenador = entrenador || clase.entrenador;
-    clase.estado = estado || clase.estado;
-
-    const claseActualizada = await clase.save();
-    res.status(200).json(claseActualizada);
+    const registro = new RegistroClase({
+      clienteId,
+      entrenadorId,
+      nombreClase,
+      dia,
+      horarioInicio,
+      horarioFin,
+    });
+    const nuevoRegistro = await registro.save();
+    console.log("Cliente registrado en clase:", nuevoRegistro);
+    res.status(201).json(nuevoRegistro);
   } catch (error) {
-    res
-      .status(500)
-      .json({ mensaje: "Error al actualizar la clase", error: error.message });
+    console.error("Error al registrar cliente en clase:", error.message);
+    res.status(400).json({ message: error.message });
   }
-};
-
-// Eliminar una clase
-const eliminarClase = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ mensaje: "ID inválido" });
-    }
-    const clase = await Clase.findByIdAndDelete(id);
-    if (!clase) return res.status(404).json({ mensaje: "Clase no encontrada" });
-    res.status(200).json({ mensaje: "Clase eliminada correctamente" });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ mensaje: "Error al eliminar la clase", error: error.message });
-  }
-};
-
-module.exports = {
-  crearClase,
-  obtenerClases,
-  obtenerClasePorId,
-  actualizarClase,
-  eliminarClase,
 };
