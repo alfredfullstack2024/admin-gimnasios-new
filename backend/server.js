@@ -1,12 +1,10 @@
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const dotenv = require("dotenv");
-const { iniciarNotificaciones } = require("./jobs/notificacionJob");
+const connectDB = require("./config/db");
 const { protect } = require("./middleware/authMiddleware");
-
-// Cargar variables de entorno desde el archivo .env
-dotenv.config();
 
 // Validar variables de entorno
 if (!process.env.MONGO_URI) {
@@ -29,20 +27,14 @@ app.use((req, res, next) => {
 });
 
 // Importar y registrar modelos
-require("./models/Usuario"); // Registrar el modelo Usuario
-require("./models/Contabilidad"); // Registrar el modelo Contabilidad
+require("./models/Usuario");
+require("./models/Contabilidad");
+require("./models/Entrenador");
+require("./models/Cliente");
+require("./models/RegistroClase"); // Modelo para registros de clases
 
-// Conexión a MongoDB usando MONGO_URI desde .env
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ Conexión a MongoDB exitosa"))
-  .catch((err) => {
-    console.error("❌ Error al conectar a MongoDB:", err);
-    process.exit(1);
-  });
+// Conectar a MongoDB
+connectDB();
 
 // Importar rutas
 console.log("Configurando rutas...");
@@ -59,6 +51,7 @@ const contabilidadRoutes = require("./routes/contabilidad");
 const indicadorRoutes = require("./routes/indicadorRoutes");
 const asistenciaRoutes = require("./routes/asistenciaRoutes");
 const rutinaRoutes = require("./routes/rutinas");
+console.log("Ruta claseRoutes cargada:", claseRoutes);
 
 // Rutas
 app.use("/api/clientes", clienteRoutes);
@@ -73,7 +66,7 @@ app.use("/api/clases", protect, claseRoutes);
 app.use("/api/contabilidad", protect, contabilidadRoutes);
 app.use("/api/indicadores", protect, indicadorRoutes);
 app.use("/api/asistencias", protect, asistenciaRoutes);
-app.use("/api/rutinas", protect, rutinaRoutes); // Unificamos y protegemos esta ruta
+app.use("/api/rutinas", protect, rutinaRoutes);
 
 // Ruta raíz para verificar que el servidor está funcionando
 app.get("/", (req, res) => {
@@ -93,22 +86,18 @@ app.use((req, res, next) => {
 // Manejo de errores
 app.use((err, req, res, next) => {
   console.error("❌ Error en el servidor:", err.stack);
-  res
-    .status(500)
-    .json({
-      mensaje: "Error interno del servidor",
-      error: err.message || "Error desconocido",
-    });
+  res.status(500).json({
+    mensaje: "Error interno del servidor",
+    error: err.message || "Error desconocido",
+  });
 });
 
-// Iniciar el servidor
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
   if (!process.env.SENDGRID_API_KEY) {
     console.log("⚠️ Notificaciones no iniciadas: Falta la clave de SendGrid.");
   } else {
-    // iniciarNotificaciones();
     console.log("✅ Notificaciones configuradas (descomentar para habilitar).");
   }
 });
