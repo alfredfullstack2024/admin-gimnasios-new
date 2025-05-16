@@ -26,6 +26,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
+      window.location.href = "/login"; // Redirigir a login automáticamente
       return Promise.reject(
         new Error("Sesión expirada. Por favor, inicia sesión nuevamente.")
       );
@@ -138,10 +139,11 @@ export const consultarRutinaPorNumeroIdentificacion = (
   config
 ) => api.get(`/rutinas/consultar/${numeroIdentificacion}`, config);
 
-// Sesiones
-export const obtenerSesiones = (config) => api.get("/sesiones", config);
-export const crearSesion = (data, config) =>
-  api.post("/sesiones/crear", data, config);
+// Clases
+export const obtenerClasesDisponibles = (config) =>
+  api.get("/clases/disponibles", config);
+export const registrarClienteEnClase = (data, config) =>
+  api.post("/clases/registrar", data, config);
 
 // Usuarios
 export const obtenerUsuarios = (config) => api.get("/usuarios", config);
