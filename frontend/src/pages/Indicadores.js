@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Container, Row, Col, Card } from "react-bootstrap";
 import api from "../api/axios";
+import { AuthContext } from "../context/AuthContext"; // Si está en src/pages
 
 const Indicadores = () => {
   const [indicadores, setIndicadores] = useState({
@@ -15,26 +16,36 @@ const Indicadores = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { user } = useContext(AuthContext);
 
   useEffect(() => {
     const fetchIndicadores = async () => {
+      if (!user || !user.token) {
+        setError("Debes iniciar sesión para ver los indicadores.");
+        setLoading(false);
+        return;
+      }
       try {
-        const response = await api.get("/indicadores");
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        const response = await api.get("/indicadores", config);
         console.log("Datos de indicadores recibidos:", response.data);
         setIndicadores(response.data);
         setLoading(false);
       } catch (err) {
         console.error(
           "Error al cargar los indicadores:",
-          err.response ? err.response : err
+          err.response ? err.response.data : err
         );
-        setError("Error al cargar los indicadores: Recurso no encontrado.");
+        setError(
+          "Error al cargar los indicadores: " +
+            (err.response?.data?.message || "Recurso no encontrado.")
+        );
         setLoading(false);
       }
     };
 
     fetchIndicadores();
-  }, []);
+  }, [user]);
 
   if (loading) return <Container>Cargando...</Container>;
   if (error) return <Container className="text-danger">{error}</Container>;

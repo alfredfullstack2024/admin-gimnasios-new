@@ -7,19 +7,14 @@ const listarTransacciones = async (req, res) => {
   try {
     console.log("Iniciando listarTransacciones...");
 
-    // Obtener parámetros de filtro por fechas
     const { fechaInicio, fechaFin } = req.query;
 
-    // Construir el filtro de fechas
-    const filtro = { tipo: "egreso" }; // Solo egresos
+    const filtro = { tipo: "egreso" };
     if (fechaInicio && fechaFin) {
       const inicio = new Date(fechaInicio);
       const fin = new Date(fechaFin);
       fin.setHours(23, 59, 59, 999);
-      filtro.fecha = {
-        $gte: inicio,
-        $lte: fin,
-      };
+      filtro.fecha = { $gte: inicio, $lte: fin };
     } else if (fechaInicio) {
       const inicio = new Date(fechaInicio);
       filtro.fecha = { $gte: inicio };
@@ -29,28 +24,22 @@ const listarTransacciones = async (req, res) => {
       filtro.fecha = { $lte: fin };
     }
 
-    // Obtener los egresos con el filtro aplicado
     const transacciones = await Transaccion.find(filtro)
       .populate("cliente", "nombre apellido")
       .populate("creadoPor", "nombre email")
       .sort({ fecha: -1 });
 
-    // Calcular total de egresos
     const egresos = await Transaccion.aggregate([
       { $match: filtro },
       { $group: { _id: null, total: { $sum: "$monto" } } },
     ]);
 
-    // Calcular total de pagos (ingresos)
     const filtroPagos = {};
     if (fechaInicio && fechaFin) {
       const inicio = new Date(fechaInicio);
       const fin = new Date(fechaFin);
       fin.setHours(23, 59, 59, 999);
-      filtroPagos.fecha = {
-        $gte: inicio,
-        $lte: fin,
-      };
+      filtroPagos.fecha = { $gte: inicio, $lte: fin };
     } else if (fechaInicio) {
       const inicio = new Date(fechaInicio);
       filtroPagos.fecha = { $gte: inicio };
@@ -65,7 +54,6 @@ const listarTransacciones = async (req, res) => {
       { $group: { _id: null, total: { $sum: "$monto" } } },
     ]);
 
-    // Extraer los totales
     const totalEgresos = egresos.length > 0 ? egresos[0].total : 0;
     const totalIngresos = totalPagos.length > 0 ? totalPagos[0].total : 0;
     const balance = totalIngresos - totalEgresos;
@@ -77,14 +65,9 @@ const listarTransacciones = async (req, res) => {
       balance,
     });
 
-    // Devolver los egresos y los totales
     res.json({
       transacciones,
-      totales: {
-        ingresos: totalIngresos,
-        egresos: totalEgresos,
-        balance,
-      },
+      totales: { ingresos: totalIngresos, egresos: totalEgresos, balance },
     });
   } catch (error) {
     console.error("Error al listar transacciones:", error.message);
@@ -99,7 +82,14 @@ const listarTransacciones = async (req, res) => {
 const agregarTransaccion = async (req, res) => {
   try {
     console.log("Iniciando agregarTransaccion...");
-    const { cliente, tipo, categoria, monto, descripcion, fecha } = req.body;
+    const { tipo, descripcion, monto, fecha, categoria } = req.body;
+
+    // Validar campos obligatorios
+    if (!tipo || !descripcion || !monto || !fecha || !categoria) {
+      return res
+        .status(400)
+        .json({ mensaje: "Todos los campos son obligatorios" });
+    }
 
     // Forzar que el tipo sea "egreso"
     if (tipo !== "egreso") {
@@ -108,14 +98,19 @@ const agregarTransaccion = async (req, res) => {
         .json({ mensaje: "Solo se pueden crear egresos desde esta sección" });
     }
 
+    // Convertir monto a número y validar
+    const montoNum = Number(monto);
+    if (isNaN(montoNum) || montoNum <= 0) {
+      return res.status(400).json({ mensaje: "Monto inválido" });
+    }
+
     const transaccion = new Transaccion({
-      cliente: cliente || null,
       tipo: "egreso",
-      categoria,
-      monto,
       descripcion,
-      fecha: fecha || Date.now(),
-      creadoPor: req.user._id,
+      monto: montoNum,
+      fecha: new Date(fecha),
+      categoria,
+      creadoPor: req.user?._id || null,
     });
 
     const savedTransaccion = await transaccion.save();
@@ -158,7 +153,14 @@ const obtenerTransaccionPorId = async (req, res) => {
 const editarTransaccion = async (req, res) => {
   try {
     console.log("Iniciando editarTransaccion...");
-    const { cliente, tipo, categoria, monto, descripcion, fecha } = req.body;
+    const { tipo, descripcion, monto, fecha, categoria } = req.body;
+
+    // Validar campos obligatorios
+    if (!tipo || !descripcion || !monto || !fecha || !categoria) {
+      return res
+        .status(400)
+        .json({ mensaje: "Todos los campos son obligatorios" });
+    }
 
     // Forzar que el tipo sea "egreso"
     if (tipo !== "egreso") {
@@ -167,15 +169,20 @@ const editarTransaccion = async (req, res) => {
         .json({ mensaje: "Solo se pueden editar egresos desde esta sección" });
     }
 
+    // Convertir monto a número y validar
+    const montoNum = Number(monto);
+    if (isNaN(montoNum) || montoNum <= 0) {
+      return res.status(400).json({ mensaje: "Monto inválido" });
+    }
+
     const transaccion = await Transaccion.findByIdAndUpdate(
       req.params.id,
       {
-        cliente: cliente || null,
         tipo: "egreso",
-        categoria,
-        monto,
         descripcion,
-        fecha,
+        monto: montoNum,
+        fecha: new Date(fecha),
+        categoria,
         updatedAt: new Date(),
       },
       { new: true, runValidators: true }

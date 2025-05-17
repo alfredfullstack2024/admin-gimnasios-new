@@ -13,7 +13,8 @@ import PrivateRoute from "./components/PrivateRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
-import ConsultarRutina from "./pages/ConsultarRutina"; // Página pública
+import ConsultarRutina from "./pages/ConsultarRutina";
+import ConsultaUsuario from "./pages/ConsultaUsuario";
 
 // Páginas Protegidas
 import Dashboard from "./pages/Dashboard";
@@ -49,10 +50,8 @@ import Contabilidad from "./pages/contabilidad/Contabilidad";
 import CrearTransaccion from "./pages/contabilidad/CrearTransaccion";
 import EditarTransaccion from "./pages/contabilidad/EditarTransaccion";
 
-// Clases
-import Clases from "./pages/Clases";
-import CrearClase from "./pages/clases/CrearClase";
-import EditarClase from "./pages/clases/EditarClase";
+// Clases (Nueva funcionalidad)
+import ListaClases from "./pages/sesiones/ListaClases";
 
 // Usuarios
 import Usuarios from "./pages/Usuarios";
@@ -78,8 +77,8 @@ const App = () => {
           {/* Rutas Públicas */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/consultar-rutina" element={<ConsultarRutina />} />{" "}
-          {/* Ruta pública */}
+          <Route path="/consultar-rutina" element={<ConsultarRutina />} />
+          <Route path="/consulta-usuario" element={<ConsultaUsuario />} />
           <Route
             path="/"
             element={
@@ -141,9 +140,7 @@ const App = () => {
               />
 
               {/* Clases */}
-              <Route path="/clases" element={<Clases />} />
-              <Route path="/clases/crear" element={<CrearClase />} />
-              <Route path="/clases/editar/:id" element={<EditarClase />} />
+              <Route path="/clases" element={<ListaClases />} />
 
               {/* Asistencias */}
               <Route path="/asistencias" element={<Asistencias />} />
@@ -155,6 +152,7 @@ const App = () => {
               {/* Rutinas */}
               <Route path="/rutinas/crear" element={<CrearRutina />} />
               <Route path="/rutinas/asignar" element={<AsignarRutina />} />
+              <Route path="/rutinas/consultar" element={<ConsultarRutina />} />
 
               {/* Usuarios */}
               <Route path="/usuarios" element={<Usuarios />} />

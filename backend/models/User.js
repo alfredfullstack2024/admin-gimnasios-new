@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema(
       default: "recepcionista",
     },
   },
-  { timestamps: true, collection: "users" }
+  { timestamps: true, collection: "usuarios" }
 );
 
 // Middleware para hashear la contraseña antes de guardar
@@ -28,7 +28,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Especificar explícitamente el nombre de la colección
-const User = mongoose.model("User", userSchema, "usuarios");
-
-module.exports = mongoose.model("User", userSchema);
+// Crear y exportar el modelo con el nombre de colección especificado
+const User = mongoose.model("User", userSchema);
+module.exports = User;

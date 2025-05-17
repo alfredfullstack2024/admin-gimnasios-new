@@ -6,9 +6,11 @@ import api from "../../api/axios";
 const Pagos = () => {
   const [pagos, setPagos] = useState([]);
   const [total, setTotal] = useState(0);
-  const [filtroTipo, setFiltroTipo] = useState("mes"); // "mes" o "semana"
-  const [mes, setMes] = useState(""); // Formato: YYYY-MM
-  const [semana, setSemana] = useState(""); // Formato: YYYY-WW
+  const [filtroTipo, setFiltroTipo] = useState("mes");
+  const [mes, setMes] = useState("");
+  const [semana, setSemana] = useState("");
+  const [busquedaNombre, setBusquedaNombre] = useState("");
+  const [pagosFiltrados, setPagosFiltrados] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -39,34 +41,51 @@ const Pagos = () => {
         params.fechaFin = endDate.toISOString();
       }
 
+      console.log("Parámetros enviados a /pagos:", params);
       const response = await api.get("/pagos", { params });
+      console.log("Respuesta del backend (/pagos):", response.data);
       const fetchedPagos = response.data.pagos || [];
       setPagos(fetchedPagos);
-      setTotal(response.data.total || 0);
+
+      // Calcular el total de los montos
+      const totalPagos = fetchedPagos.reduce(
+        (sum, pago) => sum + (pago.monto || 0),
+        0
+      );
+      setTotal(totalPagos);
+
+      // Aplicar filtrado por nombre si existe
+      const pagosFiltrados = busquedaNombre
+        ? fetchedPagos.filter((pago) => {
+            const nombreCliente = pago.cliente
+              ? `${pago.cliente.nombre} ${
+                  pago.cliente.apellido || ""
+                }`.toLowerCase()
+              : "";
+            return nombreCliente.includes(busquedaNombre.toLowerCase());
+          })
+        : fetchedPagos;
+      setPagosFiltrados(pagosFiltrados);
     } catch (err) {
-      const errorMessage =
-        err.response?.status === 401
-          ? `Error de autenticación: ${
-              err.response.data.mensaje || "Sesión inválida"
-            }`
-          : err.response?.status === 404
-          ? "Ruta no encontrada en el backend. Verifica que el servidor esté corriendo y la ruta /pagos esté configurada."
-          : err.message;
+      const errorMessage = err.response?.data?.message || err.message;
       setError("Error al cargar los pagos: " + errorMessage);
       setPagos([]);
+      setPagosFiltrados([]);
       setTotal(0);
+      console.error("Detalles del error:", err.response?.data);
     } finally {
       setIsLoading(false);
     }
-  }, [filtroTipo, mes, semana]);
+  }, [filtroTipo, mes, semana, busquedaNombre]);
 
   useEffect(() => {
     fetchPagos();
-  }, [fetchPagos]);
+  }, [filtroTipo, mes, semana, fetchPagos]);
 
   const manejarFiltrar = async (e) => {
     e.preventDefault();
-    setPagos([]); // Limpiar pagos antes de la nueva solicitud
+    setPagos([]);
+    setPagosFiltrados([]);
     setTotal(0);
     await fetchPagos();
   };
@@ -75,33 +94,45 @@ const Pagos = () => {
     setFiltroTipo("mes");
     setMes("");
     setSemana("");
+    setBusquedaNombre("");
     setPagos([]);
+    setPagosFiltrados([]);
     setTotal(0);
     await fetchPagos();
   };
 
   const eliminarPago = async (id) => {
-    if (!window.confirm("¿Estás seguro de que deseas eliminar este pago?")) {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este pago?"))
       return;
-    }
-
     try {
       setIsLoading(true);
       await api.delete(`/pagos/${id}`);
       setPagos((prevPagos) => {
         const nuevosPagos = prevPagos.filter((pago) => pago._id !== id);
-        const nuevoTotal = nuevosPagos.reduce(
-          (sum, pago) => sum + pago.monto,
+        const totalPagos = nuevosPagos.reduce(
+          (sum, pago) => sum + (pago.monto || 0),
           0
         );
-        setTotal(nuevoTotal);
+        setTotal(totalPagos);
+        setPagosFiltrados(
+          busquedaNombre
+            ? nuevosPagos.filter((pago) => {
+                const nombreCliente = pago.cliente
+                  ? `${pago.cliente.nombre} ${
+                      pago.cliente.apellido || ""
+                    }`.toLowerCase()
+                  : "";
+                return nombreCliente.includes(busquedaNombre.toLowerCase());
+              })
+            : nuevosPagos
+        );
         return nuevosPagos;
       });
       setError("");
     } catch (err) {
       setError(
         "Error al eliminar el pago: " +
-          (err.response?.data?.mensaje || err.message)
+          (err.response?.data?.message || err.message)
       );
       await fetchPagos();
     } finally {
@@ -118,18 +149,41 @@ const Pagos = () => {
     ).toLocaleDateString("es-ES");
   };
 
+  const manejarCambioBusqueda = (e) => {
+    const valor = e.target.value;
+    setBusquedaNombre(valor);
+
+    // Filtrar los pagos en el frontend
+    const pagosFiltrados = valor
+      ? pagos.filter((pago) => {
+          const nombreCliente = pago.cliente
+            ? `${pago.cliente.nombre} ${
+                pago.cliente.apellido || ""
+              }`.toLowerCase()
+            : "";
+          return nombreCliente.includes(valor.toLowerCase());
+        })
+      : pagos;
+    setPagosFiltrados(pagosFiltrados);
+
+    // Recalcular el total basado en los pagos filtrados
+    const totalFiltrado = pagosFiltrados.reduce(
+      (sum, pago) => sum + (pago.monto || 0),
+      0
+    );
+    setTotal(totalFiltrado);
+  };
+
   return (
     <div className="container mt-4">
       <h2>Pagos</h2>
-
       {error && <Alert variant="danger">{error}</Alert>}
-
       <Card className="mb-4">
         <Card.Body>
-          <Card.Title>Filtrar por Período</Card.Title>
+          <Card.Title>Filtrar y Buscar</Card.Title>
           <Form onSubmit={manejarFiltrar}>
             <Row>
-              <Col md={4}>
+              <Col md={3}>
                 <Form.Group controlId="filtroTipo">
                   <Form.Label>Tipo de Filtro</Form.Label>
                   <Form.Select
@@ -143,7 +197,7 @@ const Pagos = () => {
                 </Form.Group>
               </Col>
               {filtroTipo === "mes" ? (
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group controlId="mes">
                     <Form.Label>Mes</Form.Label>
                     <Form.Control
@@ -155,7 +209,7 @@ const Pagos = () => {
                   </Form.Group>
                 </Col>
               ) : (
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group controlId="semana">
                     <Form.Label>Semana</Form.Label>
                     <Form.Control
@@ -167,7 +221,19 @@ const Pagos = () => {
                   </Form.Group>
                 </Col>
               )}
-              <Col md={4} className="d-flex align-items-end">
+              <Col md={3}>
+                <Form.Group controlId="busquedaNombre">
+                  <Form.Label>Buscar por Nombre</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={busquedaNombre}
+                    onChange={manejarCambioBusqueda}
+                    placeholder="Nombre completo del cliente"
+                    disabled={isLoading}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3} className="d-flex align-items-end">
                 <Button
                   type="submit"
                   variant="primary"
@@ -188,7 +254,6 @@ const Pagos = () => {
           </Form>
         </Card.Body>
       </Card>
-
       <Card className="mb-4">
         <Card.Body>
           <Card.Title>Total de Pagos</Card.Title>
@@ -197,23 +262,19 @@ const Pagos = () => {
           </p>
         </Card.Body>
       </Card>
-
       <Button
         variant="primary"
         className="mb-3"
         onClick={() => navigate("/pagos/crear")}
         disabled={isLoading}
       >
-        Crear Pago
+        Crear pago
       </Button>
-
       {isLoading && <Alert variant="info">Cargando pagos...</Alert>}
-
-      {!isLoading && pagos.length === 0 && !error && (
+      {!isLoading && pagosFiltrados.length === 0 && !error && (
         <Alert variant="info">No hay pagos para mostrar.</Alert>
       )}
-
-      {!isLoading && pagos.length > 0 && (
+      {!isLoading && pagosFiltrados.length > 0 && (
         <Table striped bordered hover>
           <thead>
             <tr>
@@ -225,7 +286,7 @@ const Pagos = () => {
             </tr>
           </thead>
           <tbody>
-            {pagos.map((pago) => (
+            {pagosFiltrados.map((pago) => (
               <tr key={pago._id}>
                 <td>
                   {pago.cliente

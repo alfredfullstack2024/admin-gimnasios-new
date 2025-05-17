@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   obtenerClientes,
   obtenerRutinas,
@@ -16,7 +16,9 @@ import {
   Alert,
   Row,
   Col,
+  Spinner,
 } from "react-bootstrap";
+import { AuthContext } from "../../context/AuthContext";
 
 const AsignarRutina = () => {
   const [clientes, setClientes] = useState([]);
@@ -30,45 +32,68 @@ const AsignarRutina = () => {
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
   const [numeroCedula, setNumeroCedula] = useState("");
   const [asignacionesUsuario, setAsignacionesUsuario] = useState([]);
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
 
-  // Verificar token al cargar el componente
+  // Verificar autenticación al cargar el componente
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    console.log("Token en localStorage:", token);
-    if (!token) {
+    if (!user || !user.token) {
       setError("Debes iniciar sesión para asignar una rutina.");
       navigate("/login");
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
-  // Cargar clientes, rutinas y asignaciones al montar el componente
+  // Cargar clientes y rutinas al montar el componente
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
         const [clientesRes, rutinasRes] = await Promise.all([
-          obtenerClientes(),
-          obtenerRutinas(),
+          obtenerClientes(config),
+          obtenerRutinas(config),
         ]);
         setClientes(clientesRes.data);
         setRutinas(rutinasRes.data);
-
-        // Cargar asignaciones actuales (puedes ajustar la lógica según tu backend)
-        const asignacionesRes = await consultarRutinaPorNumeroIdentificacion(
-          ""
-        ); // Inicialmente vacío
-        setAsignaciones(asignacionesRes.data ? [asignacionesRes.data] : []);
       } catch (err) {
         console.error("Error al cargar datos:", err);
-        setError("Error al cargar datos: " + err.message);
+        setError(
+          "Error al cargar datos: " +
+            (err.response?.data?.mensaje || err.message)
+        );
+      } finally {
+        setLoading(false);
       }
     };
-    fetchData();
-  }, []);
+    if (user && user.token) {
+      fetchData();
+    }
+  }, [user]);
+
+  // Cargar asignaciones cuando cambia el cliente seleccionado
+  useEffect(() => {
+    if (formData.clienteId) {
+      fetchAsignaciones();
+    } else {
+      setAsignaciones([]); // Limpiar asignaciones si no hay cliente seleccionado
+    }
+  }, [formData.clienteId]);
+
+  // Limpiar mensajes de error y éxito después de 5 segundos
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError("");
+        setSuccess("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -84,35 +109,80 @@ const AsignarRutina = () => {
     setFormData({ ...formData, diasDescanso: dias });
   };
 
+  const fetchAsignaciones = async () => {
+    try {
+      setLoading(true);
+      const cliente = clientes.find((c) => c._id === formData.clienteId);
+      if (cliente) {
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        const response = await consultarRutinaPorNumeroIdentificacion(
+          cliente.numeroIdentificacion,
+          config
+        );
+        const asignacionesData = Array.isArray(response.data)
+          ? response.data
+          : [response.data];
+        setAsignaciones(asignacionesData);
+      } else {
+        setAsignaciones([]);
+      }
+    } catch (err) {
+      console.error("Error al cargar asignaciones:", err);
+      setError(
+        "Error al cargar asignaciones: " +
+          (err.response?.data?.mensaje || err.message)
+      );
+      setAsignaciones([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    // Validar que se hayan seleccionado días
+    if (formData.diasEntrenamiento.length === 0) {
+      setError("Debes seleccionar al menos un día de entrenamiento.");
+      return;
+    }
+    if (formData.diasDescanso.length === 0) {
+      setError("Debes seleccionar al menos un día de descanso.");
+      return;
+    }
+
     try {
+      setLoading(true);
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
       let response;
       if (editMode) {
-        response = await editarAsignacionRutina(editId, formData);
+        response = await editarAsignacionRutina(editId, formData, config);
         console.log("Respuesta del backend (editar):", response);
         setSuccess("Asignación actualizada con éxito!");
       } else {
-        response = await asignarRutina(formData);
+        response = await asignarRutina(formData, config);
         console.log("Respuesta del backend (asignar):", response);
         setSuccess("Rutina asignada con éxito!");
       }
       setEditMode(false);
       setEditId(null);
       setFormData({
-        clienteId: "",
+        clienteId: formData.clienteId, // Mantener el cliente seleccionado
         rutinaId: "",
         diasEntrenamiento: [],
         diasDescanso: [],
       });
-      fetchAsignaciones(); // Recargar asignaciones
+      await fetchAsignaciones();
     } catch (err) {
       console.error("Error al procesar asignación:", err);
       setError(
-        "Error al procesar asignación: " + (err.message || "Intenta de nuevo.")
+        "Error al procesar asignación: " +
+          (err.response?.data?.mensaje || err.message)
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,53 +190,72 @@ const AsignarRutina = () => {
     setEditMode(true);
     setEditId(asignacion._id);
     setFormData({
-      clienteId: asignacion.clienteId,
-      rutinaId: asignacion.rutinaId,
-      diasEntrenamiento: asignacion.diasEntrenamiento,
-      diasDescanso: asignacion.diasDescanso,
+      clienteId: asignacion.clienteId?._id || "",
+      rutinaId: asignacion.rutinaId?._id || "",
+      diasEntrenamiento: asignacion.diasEntrenamiento || [],
+      diasDescanso: asignacion.diasDescanso || [],
     });
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("¿Estás seguro de eliminar esta asignación?")) {
       try {
-        await eliminarAsignacionRutina(id);
+        setLoading(true);
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        await eliminarAsignacionRutina(id, config);
         setSuccess("Asignación eliminada con éxito!");
-        fetchAsignaciones(); // Recargar asignaciones
+        await fetchAsignaciones();
       } catch (err) {
         console.error("Error al eliminar asignación:", err);
-        setError("Error al eliminar asignación: " + err.message);
+        setError(
+          "Error al eliminar asignación: " +
+            (err.response?.data?.mensaje || err.message)
+        );
+      } finally {
+        setLoading(false);
       }
     }
   };
 
-  const fetchAsignaciones = async () => {
-    try {
-      const response = await consultarRutinaPorNumeroIdentificacion(
-        formData.clienteId
-          ? clientes.find((c) => c._id === formData.clienteId)
-              ?.numeroIdentificacion || ""
-          : ""
-      );
-      setAsignaciones(response.data ? [response.data] : []);
-    } catch (err) {
-      console.error("Error al cargar asignaciones:", err);
-      setError("Error al cargar asignaciones: " + err.message);
-    }
-  };
-
   const handleConsultarCedula = async () => {
+    if (!numeroCedula.trim()) {
+      setError("Por favor, ingresa un número de cédula válido.");
+      return;
+    }
     try {
+      setLoading(true);
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
       const response = await consultarRutinaPorNumeroIdentificacion(
-        numeroCedula
+        numeroCedula,
+        config
       );
-      setAsignacionesUsuario(response.data ? [response.data] : []);
+      const asignacionesData = Array.isArray(response.data)
+        ? response.data
+        : [response.data];
+      setAsignacionesUsuario(asignacionesData);
       setError("");
     } catch (err) {
       console.error("Error al consultar por cédula:", err);
-      setError("Error al consultar por cédula: " + err.message);
+      setError(
+        "Error al consultar por cédula: " +
+          (err.response?.data?.mensaje || err.message)
+      );
       setAsignacionesUsuario([]);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleClearForm = () => {
+    setFormData({
+      clienteId: "",
+      rutinaId: "",
+      diasEntrenamiento: [],
+      diasDescanso: [],
+    });
+    setAsignaciones([]);
+    setEditMode(false);
+    setEditId(null);
   };
 
   return (
@@ -174,6 +263,13 @@ const AsignarRutina = () => {
       <h2>{editMode ? "Editar Asignación" : "Asignar Rutina"}</h2>
       {error && <Alert variant="danger">{error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
+      {loading && (
+        <div className="text-center">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Cargando...</span>
+          </Spinner>
+        </div>
+      )}
       <Form onSubmit={handleSubmit}>
         <Row>
           <Col md={6}>
@@ -182,16 +278,14 @@ const AsignarRutina = () => {
               <Form.Select
                 name="clienteId"
                 value={formData.clienteId}
-                onChange={(e) => {
-                  handleChange(e);
-                  fetchAsignaciones(); // Actualizar asignaciones al cambiar cliente
-                }}
+                onChange={handleChange}
                 required
+                disabled={loading}
               >
                 <option value="">Seleccione un cliente</option>
                 {clientes.map((cliente) => (
                   <option key={cliente._id} value={cliente._id}>
-                    {cliente.nombre}
+                    {cliente.nombre} {cliente.apellido || ""}
                   </option>
                 ))}
               </Form.Select>
@@ -205,6 +299,7 @@ const AsignarRutina = () => {
                 value={formData.rutinaId}
                 onChange={handleChange}
                 required
+                disabled={loading}
               >
                 <option value="">Seleccione una rutina</option>
                 {rutinas.map((rutina) => (
@@ -226,6 +321,7 @@ const AsignarRutina = () => {
                 value={formData.diasEntrenamiento}
                 onChange={handleDiasEntrenamiento}
                 required
+                disabled={loading}
               >
                 <option value="Lunes">Lunes</option>
                 <option value="Martes">Martes</option>
@@ -246,6 +342,7 @@ const AsignarRutina = () => {
                 value={formData.diasDescanso}
                 onChange={handleDiasDescanso}
                 required
+                disabled={loading}
               >
                 <option value="Lunes">Lunes</option>
                 <option value="Martes">Martes</option>
@@ -258,7 +355,7 @@ const AsignarRutina = () => {
             </Form.Group>
           </Col>
         </Row>
-        <Button variant="primary" type="submit">
+        <Button variant="primary" type="submit" disabled={loading}>
           {editMode ? "Actualizar Asignación" : "Asignar Rutina"}
         </Button>
         {editMode && (
@@ -269,16 +366,25 @@ const AsignarRutina = () => {
               setEditMode(false);
               setEditId(null);
               setFormData({
-                clienteId: "",
+                clienteId: formData.clienteId,
                 rutinaId: "",
                 diasEntrenamiento: [],
                 diasDescanso: [],
               });
             }}
+            disabled={loading}
           >
             Cancelar Edición
           </Button>
         )}
+        <Button
+          variant="outline-secondary"
+          className="ms-2"
+          onClick={handleClearForm}
+          disabled={loading}
+        >
+          Limpiar Formulario
+        </Button>
       </Form>
 
       {/* Sección para listar las asignaciones del cliente seleccionado */}
@@ -301,22 +407,22 @@ const AsignarRutina = () => {
               {asignaciones.map((asignacion) => (
                 <tr key={asignacion._id}>
                   <td>
-                    {asignacion.clienteId
-                      ? asignacion.clienteId.nombre
-                      : "Desconocido"}
+                    {asignacion.clienteId?.nombre || "Desconocido"}{" "}
+                    {asignacion.clienteId?.apellido || ""}
                   </td>
                   <td>
                     {asignacion.rutinaId
                       ? `${asignacion.rutinaId.nombreEjercicio} (${asignacion.rutinaId.grupoMuscular})`
                       : "Desconocido"}
                   </td>
-                  <td>{asignacion.diasEntrenamiento.join(", ")}</td>
-                  <td>{asignacion.diasDescanso.join(", ")}</td>
+                  <td>{asignacion.diasEntrenamiento?.join(", ") || "N/A"}</td>
+                  <td>{asignacion.diasDescanso?.join(", ") || "N/A"}</td>
                   <td>
                     <Button
                       variant="warning"
                       size="sm"
                       onClick={() => handleEdit(asignacion)}
+                      disabled={loading}
                     >
                       Editar
                     </Button>{" "}
@@ -324,6 +430,7 @@ const AsignarRutina = () => {
                       variant="danger"
                       size="sm"
                       onClick={() => handleDelete(asignacion._id)}
+                      disabled={loading}
                     >
                       Eliminar
                     </Button>
@@ -347,6 +454,7 @@ const AsignarRutina = () => {
                 value={numeroCedula}
                 onChange={(e) => setNumeroCedula(e.target.value)}
                 placeholder="Ingresa el número de cédula"
+                disabled={loading}
               />
             </Form.Group>
           </Col>
@@ -355,6 +463,7 @@ const AsignarRutina = () => {
               variant="info"
               onClick={handleConsultarCedula}
               className="mt-2"
+              disabled={loading}
             >
               Consultar
             </Button>
@@ -374,17 +483,16 @@ const AsignarRutina = () => {
               {asignacionesUsuario.map((asignacion) => (
                 <tr key={asignacion._id}>
                   <td>
-                    {asignacion.clienteId
-                      ? asignacion.clienteId.nombre
-                      : "Desconocido"}
+                    {asignacion.clienteId?.nombre || "Desconocido"}{" "}
+                    {asignacion.clienteId?.apellido || ""}
                   </td>
                   <td>
                     {asignacion.rutinaId
                       ? `${asignacion.rutinaId.nombreEjercicio} (${asignacion.rutinaId.grupoMuscular})`
                       : "Desconocido"}
                   </td>
-                  <td>{asignacion.diasEntrenamiento.join(", ")}</td>
-                  <td>{asignacion.diasDescanso.join(", ")}</td>
+                  <td>{asignacion.diasEntrenamiento?.join(", ") || "N/A"}</td>
+                  <td>{asignacion.diasDescanso?.join(", ") || "N/A"}</td>
                 </tr>
               ))}
             </tbody>

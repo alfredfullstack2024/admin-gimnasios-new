@@ -208,10 +208,10 @@ router.delete("/asignar/:id", protect, async (req, res) => {
   }
 });
 
-// Consultar rutina por número de identificación (Pública)
+// Consultar todas las rutinas asignadas por número de identificación (Pública)
 router.get("/consultar/:numeroIdentificacion", async (req, res) => {
   try {
-    const rutinaAsignada = await RutinaAsignada.findOne({
+    const rutinasAsignadas = await RutinaAsignada.find({
       numeroIdentificacion: req.params.numeroIdentificacion,
     })
       .populate("clienteId", "nombre apellido")
@@ -220,18 +220,20 @@ router.get("/consultar/:numeroIdentificacion", async (req, res) => {
         "grupoMuscular nombreEjercicio series repeticiones descripcion"
       );
 
-    if (!rutinaAsignada) {
+    if (!rutinasAsignadas || rutinasAsignadas.length === 0) {
       return res
         .status(404)
-        .json({ mensaje: "Rutina no encontrada para este cliente" });
+        .json({
+          mensaje: "No se encontraron rutinas asignadas para este cliente",
+        });
     }
 
-    res.json(rutinaAsignada);
+    res.json(rutinasAsignadas);
   } catch (err) {
-    console.error("Error al consultar rutina:", err);
+    console.error("Error al consultar rutinas:", err);
     res
       .status(500)
-      .json({ mensaje: "Error al consultar rutina", error: err.message });
+      .json({ mensaje: "Error al consultar rutinas", error: err.message });
   }
 });
 

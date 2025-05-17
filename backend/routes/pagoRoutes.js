@@ -1,19 +1,200 @@
 const express = require("express");
 const router = express.Router();
-const {
-  listarPagos,
-  agregarPago,
-  obtenerPagoPorId,
-  editarPago,
-  eliminarPago,
-} = require("../controllers/pagoController");
+const Pago = require("../models/Pago");
+const Contabilidad = require("../models/Contabilidad");
 const { authMiddleware } = require("../middleware/auth");
 
-// Rutas para pagos
-router.get("/", authMiddleware, listarPagos);
-router.post("/", authMiddleware, agregarPago);
-router.get("/:id", authMiddleware, obtenerPagoPorId);
-router.put("/:id", authMiddleware, editarPago);
-router.delete("/:id", authMiddleware, eliminarPago);
+// Obtener un pago por ID
+router.get("/:id", authMiddleware, async (req, res) => {
+  try {
+    console.log("Solicitud GET recibida en /api/pagos/:id", req.params.id); // Depuración
+    const pago = await Pago.findById(req.params.id)
+      .populate("cliente", "nombre apellido")
+      .populate("producto", "nombre precio stock");
+
+    if (!pago) {
+      return res.status(404).json({
+        mensaje: "Pago no encontrado",
+        detalle: `No se encontró un pago con el ID ${req.params.id}`,
+      });
+    }
+
+    console.log("Pago encontrado:", JSON.stringify(pago, null, 2)); // Depuración
+    res.json(pago);
+  } catch (error) {
+    console.error("Error al obtener pago por ID:", error.stack);
+    res.status(500).json({
+      mensaje: "Error interno al obtener el pago",
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  }
+});
+
+// Actualizar un pago por ID
+router.put("/:id", authMiddleware, async (req, res) => {
+  try {
+    console.log(
+      "Solicitud PUT recibida en /api/pagos/:id",
+      req.params.id,
+      req.body
+    );
+    const { cliente, producto, cantidad, monto, fecha, metodoPago } = req.body;
+
+    if (!cantidad || !monto || !fecha || !metodoPago) {
+      return res.status(400).json({
+        mensaje: "Faltan campos requeridos",
+        detalle: "Asegúrate de enviar cantidad, monto, fecha y metodoPago",
+      });
+    }
+
+    const fechaPago = new Date(fecha);
+    if (isNaN(fechaPago.getTime())) {
+      return res.status(400).json({ mensaje: "Fecha inválida" });
+    }
+
+    // Validar stock si se proporciona un producto
+    if (producto) {
+      const Producto = require("../models/Producto");
+      const productoDoc = await Producto.findById(producto);
+      if (productoDoc && productoDoc.stock < cantidad) {
+        return res.status(400).json({
+          mensaje: "Stock insuficiente",
+          detalle: `Stock disponible: ${productoDoc.stock}, solicitado: ${cantidad}`,
+        });
+      }
+    }
+
+    const pagoActualizado = await Pago.findByIdAndUpdate(
+      req.params.id,
+      {
+        cliente: cliente || undefined,
+        producto: producto || undefined,
+        cantidad: Number(cantidad),
+        monto: Number(monto),
+        fecha: fechaPago,
+        metodoPago,
+      },
+      { new: true, runValidators: true }
+    )
+      .populate("cliente", "nombre apellido")
+      .populate("producto", "nombre precio stock");
+
+    if (!pagoActualizado) {
+      return res.status(404).json({
+        mensaje: "Pago no encontrado",
+        detalle: `No se encontró un pago con el ID ${req.params.id}`,
+      });
+    }
+
+    console.log("Pago actualizado:", JSON.stringify(pagoActualizado, null, 2));
+    res.json(pagoActualizado);
+  } catch (error) {
+    console.error("Error al actualizar pago:", error.stack);
+    res.status(500).json({
+      mensaje: "Error interno al actualizar el pago",
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  }
+});
+
+// Listar todos los pagos
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    console.log("Solicitud GET recibida en /api/pagos", req.query); // Depuración
+    console.log("Modelo Pago:", Pago); // Verificar si el modelo está cargado
+
+    if (!Pago || typeof Pago.find !== "function") {
+      throw new Error("Modelo Pago no está correctamente definido");
+    }
+
+    const pagos = await Pago.find()
+      .populate("cliente", "nombre")
+      .populate("producto", "nombre");
+    console.log("Pagos encontrados:", JSON.stringify(pagos, null, 2)); // Depuración detallada
+
+    res.json({ pagos });
+  } catch (error) {
+    console.error("Error al listar pagos:", error.stack); // Depuración con stack trace
+    res.status(500).json({
+      mensaje: "Error interno al listar los pagos",
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  }
+});
+
+// Crear un nuevo pago y registrar una transacción correspondiente
+router.post("/", authMiddleware, async (req, res) => {
+  try {
+    console.log(
+      "Solicitud POST recibida en /api/pagos",
+      JSON.stringify(req.body, null, 2)
+    );
+
+    const { cliente, producto, cantidad, monto, fecha, metodoPago } = req.body;
+
+    if (!cliente || !producto || !cantidad || !monto || !fecha || !metodoPago) {
+      return res.status(400).json({
+        mensaje: "Faltan campos requeridos",
+        detalle:
+          "Asegúrate de enviar cliente, producto, cantidad, monto, fecha y metodoPago",
+      });
+    }
+
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        mensaje: "Usuario no autenticado",
+        detalle: "No se encontró el ID del usuario en el token",
+      });
+    }
+
+    const fechaPago = new Date(fecha);
+    if (isNaN(fechaPago.getTime())) {
+      return res.status(400).json({ mensaje: "Fecha inválida" });
+    }
+
+    const nuevoPago = new Pago({
+      cliente,
+      producto,
+      cantidad,
+      monto: Number(monto),
+      fecha: fechaPago,
+      metodoPago,
+      creadoPor: req.user._id,
+    });
+
+    const pagoGuardado = await nuevoPago.save();
+
+    // Crear una transacción correspondiente en la colección transacciones
+    const nuevaTransaccion = new Contabilidad({
+      tipo: "ingreso",
+      monto: Number(monto),
+      fecha: fechaPago,
+      descripcion: `Pago de cliente - Método: ${metodoPago}`,
+      categoria: "Pago de cliente",
+      cuentaDebito: "Caja",
+      cuentaCredito: "Ingresos por servicios",
+      referencia: `PAGO-${pagoGuardado._id}`,
+      creadoPor: req.user._id,
+    });
+
+    const transaccionGuardada = await nuevaTransaccion.save();
+    console.log(
+      "Transacción creada desde pago:",
+      JSON.stringify(transaccionGuardada, null, 2)
+    );
+
+    res.status(201).json(pagoGuardado);
+  } catch (error) {
+    console.error("Error al crear pago:", error.stack);
+    res.status(500).json({
+      mensaje: "Error interno al crear el pago",
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  }
+});
 
 module.exports = router;

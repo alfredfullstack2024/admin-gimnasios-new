@@ -1,58 +1,94 @@
 const Transaccion = require("../models/Transaccion");
 
-// Crear una nueva transacción (ingreso o egreso)
+// Crear una nueva transacción (protegida)
 const crearTransaccion = async (req, res) => {
   try {
-    const { descripcion, monto, tipo, categoria, fecha } = req.body;
+    const { tipo, concepto, monto, fecha, metodoPago } = req.body;
+    console.log("Datos recibidos para crear transacción:", req.body); // Depuración
+
+    // Validar campos obligatorios
+    if (!tipo || !concepto || !monto || !fecha) {
+      return res
+        .status(400)
+        .json({ mensaje: "Tipo, concepto, monto y fecha son obligatorios" });
+    }
+
+    // Validar tipo
+    if (!["ingreso", "egreso"].includes(tipo.toLowerCase())) {
+      return res
+        .status(400)
+        .json({ mensaje: "Tipo debe ser 'ingreso' o 'egreso'" });
+    }
 
     const nuevaTransaccion = new Transaccion({
-      descripcion,
+      tipo: tipo.toLowerCase(),
+      concepto,
       monto,
-      tipo,
-      categoria,
-      fecha,
+      fecha: new Date(fecha), // Asegurar que la fecha sea un objeto Date
+      metodoPago: metodoPago || "efectivo",
+      creadoPor: req.user.id,
     });
 
-    await nuevaTransaccion.save();
-
-    res.status(201).json(nuevaTransaccion);
+    const transaccionGuardada = await nuevaTransaccion.save();
+    console.log("Transacción guardada:", transaccionGuardada); // Depuración
+    res
+      .status(201)
+      .json({
+        mensaje: "Transacción creada con éxito",
+        transaccion: transaccionGuardada,
+      });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ mensaje: "Error al crear la transacción" });
+    console.error("Error al crear transacción:", error); // Depuración
+    res
+      .status(500)
+      .json({ mensaje: "Error al crear transacción", error: error.message });
   }
 };
 
-// Obtener ingresos mensuales
-const ingresosMensuales = async (req, res) => {
+// Listar transacciones (protegida)
+const listarTransacciones = async (req, res) => {
   try {
-    const transacciones = await Transaccion.aggregate([
-      {
-        $match: { tipo: "ingreso" },
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m", date: "$fecha" } },
-          monto: { $sum: "$monto" },
-        },
-      },
-      {
-        $sort: { _id: 1 },
-      },
-    ]);
+    const { fechaInicio, fechaFin, tipo } = req.query;
+    console.log("Parámetros recibidos:", req.query); // Depuración
 
-    const datos = transacciones.map((item) => ({
-      mes: item._id,
-      monto: item.monto,
-    }));
+    const query = {};
 
-    res.json(datos);
+    if (fechaInicio && fechaFin) {
+      query.fecha = {
+        $gte: new Date(fechaInicio),
+        $lte: new Date(fechaFin),
+      };
+    }
+
+    if (tipo) {
+      query.tipo = tipo.toLowerCase();
+    }
+
+    console.log("Consulta a ejecutar:", query); // Depuración
+    const transacciones = await Transaccion.find(query).populate(
+      "creadoPor",
+      "nombre"
+    );
+    console.log("Transacciones encontradas:", transacciones); // Depuración
+
+    const totalIngresos = transacciones
+      .filter((t) => t.tipo === "ingreso")
+      .reduce((sum, t) => sum + t.monto, 0);
+    const totalEgresos = transacciones
+      .filter((t) => t.tipo === "egreso")
+      .reduce((sum, t) => sum + t.monto, 0);
+    const balance = totalIngresos - totalEgresos;
+
+    res.json({ transacciones, totalIngresos, totalEgresos, balance });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ mensaje: "Error al obtener ingresos mensuales" });
+    console.error("Error al listar transacciones:", error); // Depuración
+    res
+      .status(500)
+      .json({ mensaje: "Error al listar transacciones", error: error.message });
   }
 };
 
 module.exports = {
   crearTransaccion,
-  ingresosMensuales,
+  listarTransacciones,
 };

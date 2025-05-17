@@ -9,28 +9,36 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Configurar axios para incluir el token en todas las solicitudes
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete api.defaults.headers.common["Authorization"];
+    }
+  }, [user]);
+
   // Cargar usuario al iniciar
   useEffect(() => {
     const token = localStorage.getItem("token");
-    console.log("Token encontrado en localStorage:", token); // Depuración
+    console.log("Token encontrado en localStorage:", token);
     if (token) {
       api
-        .get("/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        .get("/auth/me")
         .then((response) => {
-          console.log("Respuesta de /auth/me:", response.data); // Depuración
-          setUser(response.data.user);
+          console.log("Respuesta de /auth/me:", response.data);
+          setUser({ ...response.data.user, token }); // Asegurar que el token esté en user
           setLoading(false);
         })
         .catch((error) => {
-          console.error("Error al cargar el usuario:", error); // Depuración
+          console.error("Error al cargar el usuario:", error);
           localStorage.removeItem("token");
           setUser(null);
           setLoading(false);
         });
     } else {
-      console.log("No hay token, usuario no autenticado."); // Depuración
+      console.log("No hay token, usuario no autenticado.");
       setLoading(false);
     }
   }, []);
@@ -39,9 +47,11 @@ const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await api.post("/auth/login", { email, password });
-      console.log("Respuesta de /auth/login:", response.data); // Depuración
-      localStorage.setItem("token", response.data.token);
-      setUser(response.data.user);
+      console.log("Respuesta de /auth/login:", response.data);
+      const token = response.data.token;
+      localStorage.setItem("token", token);
+      setUser({ ...response.data.user, token }); // Incluir token en user
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       navigate("/dashboard");
     } catch (error) {
       throw new Error(
@@ -59,9 +69,11 @@ const AuthProvider = ({ children }) => {
         password,
         rol,
       });
-      console.log("Respuesta de /auth/register:", response.data); // Depuración
-      localStorage.setItem("token", response.data.token);
-      setUser(response.data.user);
+      console.log("Respuesta de /auth/register:", response.data);
+      const token = response.data.token;
+      localStorage.setItem("token", token);
+      setUser({ ...response.data.user, token }); // Incluir token en user
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       navigate("/dashboard");
     } catch (error) {
       throw new Error(
@@ -74,13 +86,14 @@ const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
+    delete api.defaults.headers.common["Authorization"];
     navigate("/login");
   };
 
   // Verificar permisos
   const hasPermission = (requiredRole) => {
     if (!user) return false;
-    console.log("Rol del usuario:", user.rol, "Rol requerido:", requiredRole); // Depuración
+    console.log("Rol del usuario:", user.rol, "Rol requerido:", requiredRole);
     if (user.rol === "admin") return true; // Admin tiene acceso a todo
     return user.rol === requiredRole;
   };

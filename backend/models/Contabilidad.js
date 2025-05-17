@@ -2,17 +2,21 @@ const mongoose = require("mongoose");
 
 const contabilidadSchema = new mongoose.Schema(
   {
+    tipo: {
+      type: String,
+      required: true,
+      enum: ["ingreso", "egreso"],
+    },
+    monto: {
+      type: Number,
+      required: true,
+    },
     fecha: {
       type: Date,
       required: true,
     },
     descripcion: {
       type: String,
-      required: true,
-    },
-    tipo: {
-      type: String,
-      enum: ["ingreso", "egreso"],
       required: true,
     },
     categoria: {
@@ -27,21 +31,21 @@ const contabilidadSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    monto: {
-      type: Number,
-      required: true,
-    },
     referencia: {
       type: String,
       required: true,
     },
     creadoPor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Usuario",
       required: true,
     },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  { timestamps: true, collection: "transacciones" }
+  { collection: "transacciones" }
 );
 
 module.exports = mongoose.model("Contabilidad", contabilidadSchema);

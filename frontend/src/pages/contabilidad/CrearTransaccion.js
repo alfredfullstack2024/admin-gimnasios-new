@@ -1,72 +1,79 @@
 import React, { useState } from "react";
-import { Form, Button, Alert } from "react-bootstrap";
+import { Form, Button, Alert, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 
 const CrearTransaccion = () => {
   const [formData, setFormData] = useState({
-    tipo: "egreso",
-    categoria: "",
+    tipo: "ingreso", // Puede ser "ingreso" o "egreso"
+    concepto: "",
     monto: "",
-    descripcion: "",
-    fecha: new Date().toISOString().split("T")[0],
-    cuentaDebito: "Caja",
-    cuentaCredito: "Gastos",
-    referencia: "manual",
+    fecha: "",
+    metodoPago: "efectivo",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      // Validar campos antes de enviar
-      if (!formData.monto || !formData.descripcion) {
-        setError("Monto y descripción son obligatorios");
-        return;
-      }
+    setIsLoading(true);
+    setError("");
 
-      const response = await api.post("/contabilidad", formData);
-      console.log("Transacción creada:", response.data);
-      navigate("/contabilidad");
+    try {
+      const token = localStorage.getItem("token");
+      console.log("Datos enviados para crear transacción:", formData); // Depuración
+      const response = await api.post("/contabilidad/transacciones", formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("Respuesta del backend:", response.data); // Depuración
+      navigate("/contabilidad"); // Redirige al listado de transacciones
     } catch (err) {
-      const errorMessage =
-        err.response?.status === 500
-          ? `Error ${err.response.status}: ${
-              err.response.data.detalle || "Error interno del servidor"
-            }`
-          : err.response?.status === 400
-          ? `Error ${err.response.status}: ${
-              err.response.data.detalle || "Solicitud inválida"
-            }`
-          : err.message;
-      setError("Error al crear el egreso: " + errorMessage);
-      if (errorMessage.includes("Sesión expirada")) {
-        navigate("/login");
-      }
+      const errorMessage = err.response?.data?.mensaje || err.message;
+      setError("Error al crear la transacción: " + errorMessage);
+      console.error("Detalles del error:", err.response?.data); // Depuración
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="container mt-4">
-      <h2>Crear Egreso</h2>
+      <h2>Registrar Nueva Transacción</h2>
       {error && <Alert variant="danger">{error}</Alert>}
+      {isLoading && <Spinner animation="border" variant="primary" />}
       <Form onSubmit={handleSubmit}>
-        <Form.Group controlId="categoria" className="mb-3">
-          <Form.Label>Categoría</Form.Label>
+        <Form.Group className="mb-3" controlId="tipo">
+          <Form.Label>Tipo de Transacción</Form.Label>
+          <Form.Control
+            as="select"
+            name="tipo"
+            value={formData.tipo}
+            onChange={handleChange}
+            required
+          >
+            <option value="ingreso">Ingreso</option>
+            <option value="egreso">Egreso</option>
+          </Form.Control>
+        </Form.Group>
+
+        <Form.Group className="mb-3" controlId="concepto">
+          <Form.Label>Concepto</Form.Label>
           <Form.Control
             type="text"
-            name="categoria"
-            value={formData.categoria}
+            name="concepto"
+            value={formData.concepto}
             onChange={handleChange}
-            placeholder="Ej. Mantenimiento, Baños, etc."
+            required
           />
         </Form.Group>
-        <Form.Group controlId="monto" className="mb-3">
+
+        <Form.Group className="mb-3" controlId="monto">
           <Form.Label>Monto</Form.Label>
           <Form.Control
             type="number"
@@ -76,17 +83,8 @@ const CrearTransaccion = () => {
             required
           />
         </Form.Group>
-        <Form.Group controlId="descripcion" className="mb-3">
-          <Form.Label>Descripción</Form.Label>
-          <Form.Control
-            type="text"
-            name="descripcion"
-            value={formData.descripcion}
-            onChange={handleChange}
-            required
-          />
-        </Form.Group>
-        <Form.Group controlId="fecha" className="mb-3">
+
+        <Form.Group className="mb-3" controlId="fecha">
           <Form.Label>Fecha</Form.Label>
           <Form.Control
             type="date"
@@ -96,15 +94,23 @@ const CrearTransaccion = () => {
             required
           />
         </Form.Group>
-        <Button type="submit" variant="primary">
-          Crear Egreso
-        </Button>
-        <Button
-          variant="secondary"
-          className="ms-2"
-          onClick={() => navigate("/contabilidad")}
-        >
-          Cancelar
+
+        <Form.Group className="mb-3" controlId="metodoPago">
+          <Form.Label>Método de Pago</Form.Label>
+          <Form.Control
+            as="select"
+            name="metodoPago"
+            value={formData.metodoPago}
+            onChange={handleChange}
+          >
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta">Tarjeta</option>
+          </Form.Control>
+        </Form.Group>
+
+        <Button variant="primary" type="submit" disabled={isLoading}>
+          Registrar Transacción
         </Button>
       </Form>
     </div>

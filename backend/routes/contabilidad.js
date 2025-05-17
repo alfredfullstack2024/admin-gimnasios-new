@@ -6,36 +6,74 @@ const { authMiddleware } = require("../middleware/auth");
 // Listar todas las transacciones
 router.get("/", authMiddleware, async (req, res) => {
   try {
+    console.log("Solicitud GET recibida en /", req.path, req.query); // Depuración de solicitud
+    console.log("Modelo Contabilidad:", Contabilidad); // Verificar si el modelo está cargado
+
+    // Validar que el modelo Contabilidad esté disponible
     if (!Contabilidad || typeof Contabilidad.find !== "function") {
-      throw new Error("Modelo Contabilidad no está correctamente definido");
+      throw new Error(
+        "Modelo Contabilidad no está correctamente definido o no está disponible"
+      );
     }
 
-    const { fechaInicio, fechaFin } = req.query;
+    // Obtener parámetros de consulta
+    const { fechaInicio, fechaFin, tipo } = req.query;
     const filtro = {};
+
+    // Aplicar filtro por fecha
     if (fechaInicio && fechaFin) {
       const inicio = new Date(fechaInicio);
       const fin = new Date(fechaFin);
+      if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+        throw new Error("Fechas inválidas en los parámetros de consulta");
+      }
       fin.setHours(23, 59, 59, 999);
       filtro.fecha = { $gte: inicio, $lte: fin };
     } else if (fechaInicio) {
       const inicio = new Date(fechaInicio);
+      if (isNaN(inicio.getTime())) {
+        throw new Error("Fecha de inicio inválida");
+      }
       filtro.fecha = { $gte: inicio };
     } else if (fechaFin) {
       const fin = new Date(fechaFin);
+      if (isNaN(fin.getTime())) {
+        throw new Error("Fecha de fin inválida");
+      }
       fin.setHours(23, 59, 59, 999);
       filtro.fecha = { $lte: fin };
     }
 
+    // Aplicar filtro por tipo de transacción
+    if (tipo) {
+      if (tipo !== "ingreso" && tipo !== "egreso") {
+        throw new Error(
+          "Tipo de transacción inválido. Debe ser 'ingreso' o 'egreso'"
+        );
+      }
+      filtro.tipo = tipo;
+    }
+
+    console.log("Filtro aplicado:", JSON.stringify(filtro, null, 2)); // Depuración detallada del filtro
     const transacciones = await Contabilidad.find(filtro)
       .populate("creadoPor", "nombre email")
       .sort({ fecha: -1 });
 
+    console.log(
+      "Transacciones encontradas:",
+      JSON.stringify(transacciones, null, 2)
+    ); // Depuración detallada de los resultados
+    if (!transacciones) {
+      throw new Error("No se pudieron recuperar las transacciones");
+    }
+
     res.json({ transacciones });
   } catch (error) {
-    console.error("Error al listar transacciones:", error.message);
+    console.error("Error al listar transacciones:", error.stack); // Depuración con stack trace completo
     res.status(500).json({
-      mensaje: "Error al listar las transacciones",
-      detalle: error.message,
+      mensaje: "Error interno al listar las transacciones",
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined, // Mostrar stack solo en desarrollo
     });
   }
 });
@@ -43,6 +81,11 @@ router.get("/", authMiddleware, async (req, res) => {
 // Crear una nueva transacción
 router.post("/", authMiddleware, async (req, res) => {
   try {
+    console.log(
+      "Solicitud POST recibida en /",
+      JSON.stringify(req.body, null, 2)
+    ); // Depuración completa del cuerpo
+
     if (!Contabilidad) {
       throw new Error("Modelo Contabilidad no está definido");
     }
@@ -75,6 +118,14 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
+    // Validar tipo de transacción
+    if (tipo !== "ingreso" && tipo !== "egreso") {
+      return res.status(400).json({
+        mensaje: "Tipo de transacción inválido",
+        detalle: "El tipo debe ser 'ingreso' o 'egreso'",
+      });
+    }
+
     // Validar que req.user._id esté definido
     if (!req.user || !req.user._id) {
       return res.status(401).json({
@@ -83,8 +134,8 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    const fechaTransaccion = fecha ? new Date(fecha) : new Date();
-    if (isNaN(fechaTransaccion)) {
+    const fechaTransaccion = new Date(fecha);
+    if (isNaN(fechaTransaccion.getTime())) {
       return res.status(400).json({ mensaje: "Fecha inválida" });
     }
 
@@ -102,12 +153,17 @@ router.post("/", authMiddleware, async (req, res) => {
 
     const transaccionGuardada = await nuevaTransaccion.save();
     await transaccionGuardada.populate("creadoPor", "nombre email");
+    console.log(
+      "Transacción guardada:",
+      JSON.stringify(transaccionGuardada, null, 2)
+    ); // Depuración detallada
     res.status(201).json(transaccionGuardada);
   } catch (error) {
-    console.error("Error al crear transacción:", error.message);
+    console.error("Error al crear transacción:", error.stack); // Depuración con stack trace
     res.status(500).json({
       mensaje: "Error interno al crear la transacción",
-      detalle: error.message,
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });
@@ -115,6 +171,7 @@ router.post("/", authMiddleware, async (req, res) => {
 // Obtener una transacción por ID
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
+    console.log("Solicitud GET recibida en /:id", req.params.id); // Depuración
     if (!Contabilidad || typeof Contabilidad.findById !== "function") {
       throw new Error("Modelo Contabilidad no está correctamente definido");
     }
@@ -128,10 +185,11 @@ router.get("/:id", authMiddleware, async (req, res) => {
     }
     res.status(200).json(transaccion);
   } catch (error) {
-    console.error("Error al obtener transacción:", error.message);
+    console.error("Error al obtener transacción:", error.stack); // Depuración con stack trace
     res.status(500).json({
       mensaje: "Error al obtener la transacción",
-      detalle: error.message,
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });
@@ -139,6 +197,11 @@ router.get("/:id", authMiddleware, async (req, res) => {
 // Actualizar una transacción
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
+    console.log(
+      "Solicitud PUT recibida en /:id",
+      req.params.id,
+      JSON.stringify(req.body, null, 2)
+    ); // Depuración
     if (!Contabilidad || typeof Contabilidad.findById !== "function") {
       throw new Error("Modelo Contabilidad no está correctamente definido");
     }
@@ -158,8 +221,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
       return res.status(404).json({ mensaje: "Transacción no encontrada" });
     }
 
-    const fechaTransaccion = fecha ? new Date(fecha) : new Date();
-    if (isNaN(fechaTransaccion)) {
+    const fechaTransaccion = new Date(fecha);
+    if (isNaN(fechaTransaccion.getTime())) {
       return res.status(400).json({ mensaje: "Fecha inválida" });
     }
 
@@ -177,10 +240,11 @@ router.put("/:id", authMiddleware, async (req, res) => {
     await transaccion.populate("creadoPor", "nombre email");
     res.json(transaccion);
   } catch (error) {
-    console.error("Error al actualizar transacción:", error.message);
+    console.error("Error al actualizar transacción:", error.stack); // Depuración con stack trace
     res.status(500).json({
       mensaje: "Error al actualizar la transacción",
-      detalle: error.message,
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });
@@ -188,6 +252,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 // Eliminar una transacción
 router.delete("/:id", authMiddleware, async (req, res) => {
   try {
+    console.log("Solicitud DELETE recibida en /:id", req.params.id); // Depuración
     if (!Contabilidad || typeof Contabilidad.findByIdAndDelete !== "function") {
       throw new Error("Modelo Contabilidad no está correctamente definido");
     }
@@ -200,10 +265,11 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     }
     res.status(200).json({ mensaje: "Transacción eliminada correctamente" });
   } catch (error) {
-    console.error("Error al eliminar transacción:", error.message);
+    console.error("Error al eliminar transacción:", error.stack); // Depuración con stack trace
     res.status(500).json({
       mensaje: "Error al eliminar la transacción",
-      detalle: error.message,
+      detalle: error.message || "Error desconocido",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });
