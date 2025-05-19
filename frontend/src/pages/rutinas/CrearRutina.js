@@ -57,14 +57,14 @@ const CrearRutina = () => {
       if (editMode) {
         // Actualizar rutina existente
         response = await editarRutina(editId, formData);
-        console.log("Respuesta del backend (editar):", response); // Depuración
+        console.log("Respuesta del backend (editar):", response.data); // Depuración
         setSuccess("Rutina actualizada con éxito!");
         setEditMode(false);
         setEditId(null);
       } else {
         // Crear nueva rutina
         response = await crearRutina(formData);
-        console.log("Respuesta del backend (crear):", response); // Depuración
+        console.log("Respuesta del backend (crear):", response.data); // Depuración
         setSuccess("Rutina creada con éxito!");
       }
 
@@ -79,9 +79,10 @@ const CrearRutina = () => {
       // Recargar las rutinas para mostrar la actualización
       fetchRutinas();
     } catch (err) {
-      console.error("Error al procesar rutina:", err);
+      console.error("Error al procesar rutina:", err.response?.data || err);
       setError(
-        err.message ||
+        err.response?.data?.mensaje ||
+          err.message ||
           "Error al procesar la rutina. Revisa los datos e intenta de nuevo."
       );
     }
