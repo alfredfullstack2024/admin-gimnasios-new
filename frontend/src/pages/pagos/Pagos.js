@@ -5,7 +5,6 @@ import api from "../../api/axios";
 
 const Pagos = () => {
   const [pagos, setPagos] = useState([]);
-  const [total, setTotal] = useState(0);
   const [filtroTipo, setFiltroTipo] = useState("mes");
   const [mes, setMes] = useState("");
   const [semana, setSemana] = useState("");
@@ -47,13 +46,6 @@ const Pagos = () => {
       const fetchedPagos = response.data.pagos || [];
       setPagos(fetchedPagos);
 
-      // Calcular el total de los montos
-      const totalPagos = fetchedPagos.reduce(
-        (sum, pago) => sum + (pago.monto || 0),
-        0
-      );
-      setTotal(totalPagos);
-
       // Aplicar filtrado por nombre si existe
       const pagosFiltrados = busquedaNombre
         ? fetchedPagos.filter((pago) => {
@@ -71,7 +63,6 @@ const Pagos = () => {
       setError("Error al cargar los pagos: " + errorMessage);
       setPagos([]);
       setPagosFiltrados([]);
-      setTotal(0);
       console.error("Detalles del error:", err.response?.data);
     } finally {
       setIsLoading(false);
@@ -86,7 +77,6 @@ const Pagos = () => {
     e.preventDefault();
     setPagos([]);
     setPagosFiltrados([]);
-    setTotal(0);
     await fetchPagos();
   };
 
@@ -97,7 +87,6 @@ const Pagos = () => {
     setBusquedaNombre("");
     setPagos([]);
     setPagosFiltrados([]);
-    setTotal(0);
     await fetchPagos();
   };
 
@@ -109,11 +98,6 @@ const Pagos = () => {
       await api.delete(`/pagos/${id}`);
       setPagos((prevPagos) => {
         const nuevosPagos = prevPagos.filter((pago) => pago._id !== id);
-        const totalPagos = nuevosPagos.reduce(
-          (sum, pago) => sum + (pago.monto || 0),
-          0
-        );
-        setTotal(totalPagos);
         setPagosFiltrados(
           busquedaNombre
             ? nuevosPagos.filter((pago) => {
@@ -165,13 +149,6 @@ const Pagos = () => {
         })
       : pagos;
     setPagosFiltrados(pagosFiltrados);
-
-    // Recalcular el total basado en los pagos filtrados
-    const totalFiltrado = pagosFiltrados.reduce(
-      (sum, pago) => sum + (pago.monto || 0),
-      0
-    );
-    setTotal(totalFiltrado);
   };
 
   return (
@@ -252,14 +229,6 @@ const Pagos = () => {
               </Col>
             </Row>
           </Form>
-        </Card.Body>
-      </Card>
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title>Total de Pagos</Card.Title>
-          <p>
-            <strong>Total:</strong> ${total.toLocaleString()}
-          </p>
         </Card.Body>
       </Card>
       <Button
