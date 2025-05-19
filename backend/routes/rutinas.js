@@ -16,6 +16,9 @@ router.post("/", protect, async (req, res) => {
       descripcion,
     } = req.body;
 
+    console.log("Datos recibidos:", req.body); // Depuración
+    console.log("Usuario autenticado:", req.user); // Depuración
+
     if (!grupoMuscular || !nombreEjercicio || !series || !repeticiones) {
       return res.status(400).json({
         mensaje:
@@ -33,6 +36,7 @@ router.post("/", protect, async (req, res) => {
     });
 
     await nuevaRutina.save();
+    console.log("Rutina guardada:", nuevaRutina); // Depuración
     res
       .status(201)
       .json({ mensaje: "Rutina creada con éxito", rutina: nuevaRutina });
@@ -40,7 +44,11 @@ router.post("/", protect, async (req, res) => {
     console.error("Error al crear rutina:", err);
     res
       .status(500)
-      .json({ mensaje: "Error al crear rutina", error: err.message });
+      .json({
+        mensaje: "Error al crear rutina",
+        error: err.message,
+        stack: err.stack,
+      });
   }
 });
 
@@ -208,8 +216,8 @@ router.delete("/asignar/:id", protect, async (req, res) => {
   }
 });
 
-// Consultar todas las rutinas asignadas por número de identificación (Pública)
-router.get("/consultar/:numeroIdentificacion", async (req, res) => {
+// Consultar todas las rutinas asignadas por número de identificación (Protegida)
+router.get("/consultar/:numeroIdentificacion", protect, async (req, res) => {
   try {
     const rutinasAsignadas = await RutinaAsignada.find({
       numeroIdentificacion: req.params.numeroIdentificacion,
@@ -221,14 +229,22 @@ router.get("/consultar/:numeroIdentificacion", async (req, res) => {
       );
 
     if (!rutinasAsignadas || rutinasAsignadas.length === 0) {
-      return res
-        .status(404)
-        .json({
-          mensaje: "No se encontraron rutinas asignadas para este cliente",
-        });
+      return res.status(404).json({
+        mensaje: "No se encontraron rutinas asignadas para este cliente",
+      });
     }
 
-    res.json(rutinasAsignadas);
+    // Formatear la respuesta para que coincida con lo que espera el frontend
+    const formattedRutinas = rutinasAsignadas.map((rutinaAsignada) => ({
+      nombreRutina: rutinaAsignada.rutinaId.nombreEjercicio,
+      ejercicios: [
+        `${rutinaAsignada.rutinaId.grupoMuscular}: ${rutinaAsignada.rutinaId.series} series x ${rutinaAsignada.rutinaId.repeticiones} repeticiones`,
+      ],
+      duracion: rutinaAsignada.diasEntrenamiento * 60, // Suponiendo 60 minutos por día de entrenamiento
+      fechaAsignacion: rutinaAsignada.createdAt,
+    }));
+
+    res.json(formattedRutinas);
   } catch (err) {
     console.error("Error al consultar rutinas:", err);
     res
