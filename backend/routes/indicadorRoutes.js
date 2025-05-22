@@ -9,10 +9,9 @@ const { protect } = require("../middleware/authMiddleware");
 
 router.get("/", protect, async (req, res) => {
   try {
-    // Clientes Activos (asumiendo membresiaActiva como campo opcional)
+    // Clientes Activos (considerando "No especificado" como activo temporalmente)
     const clientesActivos = await Cliente.countDocuments({
-      estado: "activo",
-      membresiaActiva: { $exists: true, $eq: true },
+      $or: [{ estado: "activo" }, { estado: "No especificado" }],
     });
     console.log("Clientes Activos:", clientesActivos);
 

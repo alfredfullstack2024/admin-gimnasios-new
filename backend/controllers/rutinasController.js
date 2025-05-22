@@ -1,30 +1,40 @@
 const Rutina = require("../models/Rutina");
-const Cliente = require("../models/Cliente");
+const Pago = require("../models/Pago");
 
-exports.consultarRutinaPorNumeroIdentificacion = async (req, res) => {
+// Consultar rutinas por número de identificación
+exports.consultarRutinasPorNumeroIdentificacion = async (req, res) => {
   const { numeroIdentificacion } = req.params;
-
   try {
-    const cliente = await Cliente.findOne({ numeroIdentificacion });
-    if (!cliente) {
-      return res.status(404).json({ message: "Cliente no encontrado." });
+    const rutinas = await Rutina.find({ numeroIdentificacion }).lean();
+    if (!rutinas || rutinas.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No se encontraron rutinas para este cliente." });
     }
-
-    const rutinas = await Rutina.find({ clienteId: cliente._id });
-    const rutinasConDetalles = await Promise.all(
-      rutinas.map(async (rutina) => {
-        const clienteNombre = cliente.nombre;
-        return {
-          clienteNombre,
-          nombre: rutina.nombre,
-          diasEntrenamiento: rutina.diasEntrenamiento,
-          diasDescanso: rutina.diasDescanso,
-        };
-      })
-    );
-    res.json(rutinasConDetalles);
+    res.json(rutinas);
   } catch (error) {
-    console.error("Error al consultar rutinas:", error.stack);
-    res.status(500).json({ message: "Error interno del servidor." });
+    console.error("Error al consultar rutinas:", error.message);
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor.", error: error.message });
+  }
+};
+
+// Consultar pagos por número de identificación
+exports.consultarPagosPorNumeroIdentificacion = async (req, res) => {
+  const { numeroIdentificacion } = req.params;
+  try {
+    const pagos = await Pago.find({ numeroIdentificacion }).lean();
+    if (!pagos || pagos.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No se encontraron pagos para este cliente." });
+    }
+    res.json(pagos);
+  } catch (error) {
+    console.error("Error al consultar pagos:", error.message);
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor.", error: error.message });
   }
 };

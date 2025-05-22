@@ -12,7 +12,6 @@ const RegistrarAsistencia = () => {
   });
   const navigate = useNavigate();
 
-  // Cargar clientes y clases disponibles
   useEffect(() => {
     const fetchClientes = async () => {
       try {
@@ -25,7 +24,7 @@ const RegistrarAsistencia = () => {
 
     const fetchClases = async () => {
       try {
-        const response = await api.get("/clases");
+        const response = await api.get("/clases/disponibles"); // Cambiado a /disponibles
         setClases(response.data);
       } catch (err) {
         console.error("Error al cargar clases:", err);
@@ -50,8 +49,8 @@ const RegistrarAsistencia = () => {
     } catch (err) {
       console.error("Error al registrar asistencia:", err);
       alert(
-        "Error al registrar asistencia: " + err.response?.data?.mensaje ||
-          err.message
+        "Error al registrar asistencia: " +
+          (err.response?.data?.mensaje || err.message)
       );
     }
   };
@@ -87,8 +86,12 @@ const RegistrarAsistencia = () => {
           >
             <option value="">Selecciona una clase</option>
             {clases.map((clase) => (
-              <option key={clase._id} value={clase._id}>
-                {clase.nombre} - {new Date(clase.horario).toLocaleString()}
+              <option
+                key={clase._id || clase.nombreClase}
+                value={clase._id || clase.nombreClase}
+              >
+                {clase.nombreClase} - {clase.dia} ({clase.horarioInicio} -{" "}
+                {clase.horarioFin})
               </option>
             ))}
           </Form.Select>

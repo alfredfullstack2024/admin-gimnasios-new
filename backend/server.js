@@ -31,7 +31,8 @@ require("./models/Usuario");
 require("./models/Contabilidad");
 require("./models/Entrenador");
 require("./models/Cliente");
-require("./models/RegistroClases"); // Corregido de RegistroClase a RegistroClases
+require("./models/RegistroClases");
+require("./models/ComposicionCorporal"); // Añadido el modelo ComposicionCorporal
 
 // Conectar a MongoDB
 connectDB();
@@ -51,9 +52,11 @@ const contabilidadRoutes = require("./routes/contabilidad");
 const indicadorRoutes = require("./routes/indicadorRoutes");
 const asistenciaRoutes = require("./routes/asistenciaRoutes");
 const rutinaRoutes = require("./routes/rutinas");
+const composicionCorporalRoutes = require("./routes/composicionCorporal"); // Añadida la importación de rutas para ComposicionCorporal
 console.log("Rutas cargadas:", {
   clienteRoutes,
   claseRoutes,
+  composicionCorporalRoutes, // Añadido a los logs para verificar
 });
 
 // Rutas
@@ -70,6 +73,7 @@ app.use("/api/contabilidad", protect, contabilidadRoutes);
 app.use("/api/indicadores", protect, indicadorRoutes);
 app.use("/api/asistencias", protect, asistenciaRoutes);
 app.use("/api/rutinas", protect, rutinaRoutes);
+app.use("/api/composicionCorporal", protect, composicionCorporalRoutes); // Añadida la ruta para ComposicionCorporal
 
 // Ruta raíz para verificar que el servidor está funcionando
 app.get("/", (req, res) => {

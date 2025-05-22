@@ -1,5 +1,6 @@
 const Entrenador = require("../models/Entrenador");
-const RegistroClases = require("../models/RegistroClases"); // Asegúrate de que el archivo sea RegistroClases.js
+const RegistroClases = require("../models/RegistroClases");
+const Cliente = require("../models/Cliente"); // Añadido para validar cliente
 
 exports.obtenerClasesDisponibles = async (req, res) => {
   try {
@@ -44,12 +45,10 @@ exports.obtenerClasesDisponibles = async (req, res) => {
     res.json(clasesDisponibles);
   } catch (error) {
     console.error("Error al obtener clases disponibles:", error.stack);
-    res
-      .status(500)
-      .json({
-        message: "Error interno del servidor al obtener clases.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error interno del servidor al obtener clases.",
+      error: error.message,
+    });
   }
 };
 
@@ -70,8 +69,6 @@ exports.registrarClienteEnClase = async (req, res) => {
 
     if (
       !numeroIdentificacion ||
-      !nombre ||
-      !apellido ||
       !entrenadorId ||
       !nombreClase ||
       !dia ||
@@ -80,7 +77,17 @@ exports.registrarClienteEnClase = async (req, res) => {
     ) {
       return res
         .status(400)
-        .json({ message: "Todos los campos son requeridos." });
+        .json({
+          message: "Todos los campos son requeridos excepto nombre y apellido.",
+        });
+    }
+
+    // Validar que el numeroIdentificacion exista en la colección clientes
+    const cliente = await Cliente.findOne({ numeroIdentificacion });
+    if (!cliente) {
+      return res
+        .status(404)
+        .json({ message: "Número de identificación no encontrado." });
     }
 
     const entrenador = await Entrenador.findById(entrenadorId).lean();
@@ -108,8 +115,8 @@ exports.registrarClienteEnClase = async (req, res) => {
 
     const registro = new RegistroClases({
       numeroIdentificacion,
-      nombre,
-      apellido,
+      nombre: cliente.nombre || nombre || "", // Usa el nombre del cliente encontrado
+      apellido: cliente.apellido || apellido || "", // Usa el apellido del cliente encontrado
       entrenadorId,
       nombreClase,
       dia,
@@ -118,20 +125,16 @@ exports.registrarClienteEnClase = async (req, res) => {
     });
     const nuevoRegistro = await registro.save();
     console.log("Cliente registrado en clase:", nuevoRegistro);
-    res
-      .status(201)
-      .json({
-        message: "Cliente registrado en clase con éxito",
-        registro: nuevoRegistro,
-      });
+    res.status(201).json({
+      message: "Cliente registrado en clase con éxito",
+      registro: nuevoRegistro,
+    });
   } catch (error) {
     console.error("Error al registrar cliente en clase:", error.message);
-    res
-      .status(500)
-      .json({
-        message: "Error al registrar cliente en clase",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al registrar cliente en clase",
+      error: error.message,
+    });
   }
 };
 

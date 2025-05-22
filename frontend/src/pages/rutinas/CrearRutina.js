@@ -45,7 +45,13 @@ const CrearRutina = () => {
   }, []);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]:
+        e.target.name === "series" || e.target.name === "repeticiones"
+          ? Number(e.target.value)
+          : e.target.value,
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -57,14 +63,14 @@ const CrearRutina = () => {
       if (editMode) {
         // Actualizar rutina existente
         response = await editarRutina(editId, formData);
-        console.log("Respuesta del backend (editar):", response); // Depuración
+        console.log("Respuesta del backend (editar):", response.data); // Depuración
         setSuccess("Rutina actualizada con éxito!");
         setEditMode(false);
         setEditId(null);
       } else {
         // Crear nueva rutina
         response = await crearRutina(formData);
-        console.log("Respuesta del backend (crear):", response); // Depuración
+        console.log("Respuesta del backend (crear):", response.data); // Depuración
         setSuccess("Rutina creada con éxito!");
       }
 
@@ -79,9 +85,10 @@ const CrearRutina = () => {
       // Recargar las rutinas para mostrar la actualización
       fetchRutinas();
     } catch (err) {
-      console.error("Error al procesar rutina:", err);
+      console.error("Error al procesar rutina:", err.response?.data || err);
       setError(
-        err.message ||
+        err.response?.data?.mensaje ||
+          err.message ||
           "Error al procesar la rutina. Revisa los datos e intenta de nuevo."
       );
     }
@@ -106,6 +113,11 @@ const CrearRutina = () => {
       "Aperturas con mancuernas",
       "Press inclinado",
       "Cruces en polea",
+      "Fondos en paralelas",
+      "Press declinado",
+      "Pullover con mancuerna",
+      "Push-up diamante",
+      "Press con mancuernas",
     ],
     Piernas: [
       "Sentadillas",
@@ -113,6 +125,11 @@ const CrearRutina = () => {
       "Zancadas",
       "Prensa de piernas",
       "Extensiones de cuádriceps",
+      "Peso muerto sumo",
+      "Elevación de talones",
+      "Step-ups",
+      "Sentadilla frontal",
+      "Curl femoral",
     ],
     Espalda: [
       "Dominadas",
@@ -120,6 +137,11 @@ const CrearRutina = () => {
       "Jalón al pecho",
       "Remo con mancuerna",
       "Peso muerto rumano",
+      "Remo en máquina",
+      "Face pull",
+      "Pull-over con barra",
+      "Hiperextensiones",
+      "Jalón tras nuca",
     ],
     Brazos: [
       "Curl de bíceps con mancuernas",
@@ -127,6 +149,11 @@ const CrearRutina = () => {
       "Martillo con mancuernas",
       "Press francés",
       "Curl de bíceps con barra",
+      "Dips para tríceps",
+      "Curl concentrado",
+      "Extensiones sobre la cabeza",
+      "Curl martillo con barra",
+      "Kickback de tríceps",
     ],
     Hombros: [
       "Press militar",
@@ -134,6 +161,11 @@ const CrearRutina = () => {
       "Elevaciones frontales",
       "Encogimientos de hombros",
       "Remo al mentón",
+      "Press Arnold",
+      "Elevaciones traseras",
+      "Press con mancuernas",
+      "Rotaciones externas",
+      "Plancha con elevación",
     ],
     Abdomen: [
       "Plancha",
@@ -141,6 +173,11 @@ const CrearRutina = () => {
       "Elevaciones de piernas",
       "Russian twists",
       "Bicicleta abdominal",
+      "Plancha lateral",
+      "Mountain climbers",
+      "Ab rollouts",
+      "Leg raises colgando",
+      "Vacío abdominal",
     ],
   };
 

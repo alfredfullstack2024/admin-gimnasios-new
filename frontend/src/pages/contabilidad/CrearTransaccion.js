@@ -6,10 +6,13 @@ import api from "../../api/axios";
 const CrearTransaccion = () => {
   const [formData, setFormData] = useState({
     tipo: "ingreso", // Puede ser "ingreso" o "egreso"
-    concepto: "",
+    descripcion: "", // Cambiado de "concepto" a "descripcion"
     monto: "",
     fecha: "",
     metodoPago: "efectivo",
+    cuentaDebito: "Caja", // Añadido para coincidir con el modelo
+    cuentaCredito: "Ingresos", // Añadido para coincidir con el modelo
+    referencia: "manual", // Añadido para coincidir con el modelo
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -26,11 +29,8 @@ const CrearTransaccion = () => {
     setError("");
 
     try {
-      const token = localStorage.getItem("token");
       console.log("Datos enviados para crear transacción:", formData); // Depuración
-      const response = await api.post("/contabilidad/transacciones", formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.post("/contabilidad/", formData); // Cambiado a "/contabilidad/"
       console.log("Respuesta del backend:", response.data); // Depuración
       navigate("/contabilidad"); // Redirige al listado de transacciones
     } catch (err) {
@@ -62,12 +62,12 @@ const CrearTransaccion = () => {
           </Form.Control>
         </Form.Group>
 
-        <Form.Group className="mb-3" controlId="concepto">
-          <Form.Label>Concepto</Form.Label>
+        <Form.Group className="mb-3" controlId="descripcion">
+          <Form.Label>Descripción</Form.Label>
           <Form.Control
             type="text"
-            name="concepto"
-            value={formData.concepto}
+            name="descripcion"
+            value={formData.descripcion}
             onChange={handleChange}
             required
           />
@@ -106,6 +106,48 @@ const CrearTransaccion = () => {
             <option value="efectivo">Efectivo</option>
             <option value="transferencia">Transferencia</option>
             <option value="tarjeta">Tarjeta</option>
+          </Form.Control>
+        </Form.Group>
+
+        <Form.Group className="mb-3" controlId="cuentaDebito">
+          <Form.Label>Cuenta Débito</Form.Label>
+          <Form.Control
+            as="select"
+            name="cuentaDebito"
+            value={formData.cuentaDebito}
+            onChange={handleChange}
+            required
+          >
+            <option value="Caja">Caja</option>
+            <option value="Bancos">Bancos</option>
+          </Form.Control>
+        </Form.Group>
+
+        <Form.Group className="mb-3" controlId="cuentaCredito">
+          <Form.Label>Cuenta Crédito</Form.Label>
+          <Form.Control
+            as="select"
+            name="cuentaCredito"
+            value={formData.cuentaCredito}
+            onChange={handleChange}
+            required
+          >
+            <option value="Ingresos">Ingresos</option>
+            <option value="Gastos">Gastos</option>
+          </Form.Control>
+        </Form.Group>
+
+        <Form.Group className="mb-3" controlId="referencia">
+          <Form.Label>Referencia</Form.Label>
+          <Form.Control
+            as="select"
+            name="referencia"
+            value={formData.referencia}
+            onChange={handleChange}
+            required
+          >
+            <option value="manual">Manual</option>
+            <option value="factura">Factura</option>
           </Form.Control>
         </Form.Group>
 

@@ -6,6 +6,7 @@ const obtenerClientes = async (req, res) => {
     const clientes = await Cliente.find().select(
       "nombre apellido email telefono direccion estado numeroIdentificacion fechaRegistro"
     );
+    console.log("Clientes obtenidos:", clientes); // Depuración
     res.status(200).json(clientes);
   } catch (error) {
     res

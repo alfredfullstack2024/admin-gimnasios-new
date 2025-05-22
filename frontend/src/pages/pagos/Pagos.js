@@ -5,7 +5,6 @@ import api from "../../api/axios";
 
 const Pagos = () => {
   const [pagos, setPagos] = useState([]);
-  const [total, setTotal] = useState(0);
   const [filtroTipo, setFiltroTipo] = useState("mes");
   const [mes, setMes] = useState("");
   const [semana, setSemana] = useState("");
@@ -47,13 +46,6 @@ const Pagos = () => {
       const fetchedPagos = response.data.pagos || [];
       setPagos(fetchedPagos);
 
-      // Calcular el total de los montos
-      const totalPagos = fetchedPagos.reduce(
-        (sum, pago) => sum + (pago.monto || 0),
-        0
-      );
-      setTotal(totalPagos);
-
       // Aplicar filtrado por nombre si existe
       const pagosFiltrados = busquedaNombre
         ? fetchedPagos.filter((pago) => {
@@ -71,7 +63,6 @@ const Pagos = () => {
       setError("Error al cargar los pagos: " + errorMessage);
       setPagos([]);
       setPagosFiltrados([]);
-      setTotal(0);
       console.error("Detalles del error:", err.response?.data);
     } finally {
       setIsLoading(false);
@@ -86,7 +77,6 @@ const Pagos = () => {
     e.preventDefault();
     setPagos([]);
     setPagosFiltrados([]);
-    setTotal(0);
     await fetchPagos();
   };
 
@@ -97,7 +87,6 @@ const Pagos = () => {
     setBusquedaNombre("");
     setPagos([]);
     setPagosFiltrados([]);
-    setTotal(0);
     await fetchPagos();
   };
 
@@ -109,11 +98,6 @@ const Pagos = () => {
       await api.delete(`/pagos/${id}`);
       setPagos((prevPagos) => {
         const nuevosPagos = prevPagos.filter((pago) => pago._id !== id);
-        const totalPagos = nuevosPagos.reduce(
-          (sum, pago) => sum + (pago.monto || 0),
-          0
-        );
-        setTotal(totalPagos);
         setPagosFiltrados(
           busquedaNombre
             ? nuevosPagos.filter((pago) => {
@@ -165,13 +149,25 @@ const Pagos = () => {
         })
       : pagos;
     setPagosFiltrados(pagosFiltrados);
+  };
 
-    // Recalcular el total basado en los pagos filtrados
-    const totalFiltrado = pagosFiltrados.reduce(
-      (sum, pago) => sum + (pago.monto || 0),
-      0
+  const esProximoVencimiento = (fecha, productoNombre) => {
+    // Solo aplicar la lógica a productos de tipo "Mensualidad"
+    if (
+      !productoNombre ||
+      !productoNombre.toLowerCase().includes("mensualidad")
+    ) {
+      return false;
+    }
+
+    const fechaPago = new Date(fecha);
+    const vencimiento = new Date(fechaPago);
+    vencimiento.setDate(vencimiento.getDate() + 30); // Suma 30 días para mensualidad
+    const hoy = new Date(); // Fecha actual: 20/5/2025
+    const diferenciaDias = Math.ceil(
+      (vencimiento - hoy) / (1000 * 60 * 60 * 24)
     );
-    setTotal(totalFiltrado);
+    return diferenciaDias <= 5 && diferenciaDias > 0; // Menos de 5 días y no vencido
   };
 
   return (
@@ -254,14 +250,6 @@ const Pagos = () => {
           </Form>
         </Card.Body>
       </Card>
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title>Total de Pagos</Card.Title>
-          <p>
-            <strong>Total:</strong> ${total.toLocaleString()}
-          </p>
-        </Card.Body>
-      </Card>
       <Button
         variant="primary"
         className="mb-3"
@@ -287,7 +275,17 @@ const Pagos = () => {
           </thead>
           <tbody>
             {pagosFiltrados.map((pago) => (
-              <tr key={pago._id}>
+              <tr
+                key={pago._id}
+                style={{
+                  backgroundColor: esProximoVencimiento(
+                    pago.fecha,
+                    pago.producto?.nombre
+                  )
+                    ? "#ffcccc"
+                    : "transparent",
+                }}
+              >
                 <td>
                   {pago.cliente
                     ? `${pago.cliente.nombre} ${pago.cliente.apellido || ""}`

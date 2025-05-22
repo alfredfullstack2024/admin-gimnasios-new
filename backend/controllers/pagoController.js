@@ -4,8 +4,8 @@ const Cliente = require("../models/Cliente");
 // Listar todos los pagos (protegida)
 const listarPagos = async (req, res) => {
   try {
-    const { fechaInicio, fechaFin, nombreCliente } = req.query; // Añadido nombreCliente
-    const query = {};
+    const { fechaInicio, fechaFin, nombreCliente } = req.query;
+    const query = { estado: "Completado" }; // Filtrar solo pagos completados
 
     if (fechaInicio && fechaFin) {
       query.fecha = {
@@ -21,7 +21,7 @@ const listarPagos = async (req, res) => {
 
     // Filtrar por nombre completo del cliente si se proporciona
     if (nombreCliente) {
-      console.log("Filtrando por nombreCliente:", nombreCliente); // Depuración
+      console.log("Filtrando por nombreCliente:", nombreCliente);
       pagos = pagos.filter((pago) => {
         const nombreCompleto = `${pago.cliente?.nombre || ""} ${
           pago.cliente?.apellido || ""
@@ -53,7 +53,7 @@ const consultarPagosPorCedula = async (req, res) => {
     const pagos = await Pago.find({ cliente: cliente._id })
       .populate("cliente", "nombre apellido")
       .populate("producto", "nombre precio");
-    res.json(pagos); // Devolver arreglo vacío si no hay pagos
+    res.json(pagos);
   } catch (error) {
     res.status(500).json({ mensaje: "Error al consultar pagos", error });
   }
@@ -126,6 +126,28 @@ const eliminarPago = async (req, res) => {
   }
 };
 
+// Nuevo controlador para calcular ingresos totales (para Resumen Financiero)
+const obtenerIngresos = async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin } = req.query;
+    const query = { estado: "Completado" }; // Filtrar solo pagos completados
+
+    if (fechaInicio && fechaFin) {
+      query.fecha = {
+        $gte: new Date(fechaInicio),
+        $lte: new Date(fechaFin),
+      };
+    }
+
+    const pagos = await Pago.find(query).lean();
+    const totalIngresos = pagos.reduce((sum, pago) => sum + pago.monto, 0);
+
+    res.json({ ingresos: totalIngresos, detalles: pagos });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al calcular ingresos", error });
+  }
+};
+
 module.exports = {
   listarPagos,
   consultarPagosPorCedula,
@@ -133,4 +155,5 @@ module.exports = {
   obtenerPagoPorId,
   editarPago,
   eliminarPago,
+  obtenerIngresos,
 };

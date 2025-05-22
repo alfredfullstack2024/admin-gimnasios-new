@@ -152,6 +152,12 @@ export const consultarClasesPorNumeroIdentificacion = (
 // Usuarios
 export const obtenerUsuarios = (config) => api.get("/usuarios", config);
 
+// Composición Corporal
+export const crearComposicionCorporal = (data, config) =>
+  api.post("/composicionCorporal", data, config);
+export const consultarComposicionPorCliente = (identificacion, config) =>
+  api.get(`/composicionCorporal/cliente/${identificacion}`, config);
+
 // Autenticación
 export const login = (data) => api.post("/auth/login", data);
 export const registrarse = (data) => api.post("/auth/register", data);

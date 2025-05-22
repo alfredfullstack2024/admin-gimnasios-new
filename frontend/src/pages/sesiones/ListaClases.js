@@ -10,12 +10,10 @@ import {
 import {
   obtenerClasesDisponibles,
   registrarClienteEnClase,
-  obtenerClientes,
 } from "../../api/axios";
 
 const ListaClases = () => {
   const [clases, setClases] = useState([]);
-  const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -35,13 +33,8 @@ const ListaClases = () => {
 
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        const [clasesResponse, clientesResponse] = await Promise.all([
-          obtenerClasesDisponibles(config),
-          obtenerClientes(config),
-        ]);
-
+        const clasesResponse = await obtenerClasesDisponibles(config);
         setClases(clasesResponse.data || []);
-        setClientes(clientesResponse.data || []);
         setError(null);
       } catch (err) {
         setError(
@@ -57,7 +50,7 @@ const ListaClases = () => {
 
   const handleRegistrar = async (clase) => {
     if (!numeroIdentificacion) {
-      setError("Por favor, seleccione un cliente.");
+      setError("Por favor, ingrese un número de identificación.");
       return;
     }
 
@@ -91,6 +84,7 @@ const ListaClases = () => {
             : c
         )
       );
+      setNumeroIdentificacion(""); // Limpiar el campo después de registrar
     } catch (err) {
       setError(err.response?.data?.message || "Error al registrar el cliente.");
       setSuccess(null);
@@ -114,19 +108,14 @@ const ListaClases = () => {
       {!loading && (
         <>
           <Form.Group className="mb-3">
-            <Form.Label>Seleccionar Cliente</Form.Label>
-            <Form.Select
+            <Form.Label>Número de Identificación</Form.Label>
+            <Form.Control
+              type="text"
               value={numeroIdentificacion}
               onChange={(e) => setNumeroIdentificacion(e.target.value)}
+              placeholder="Ingrese el número de identificación"
               required
-            >
-              <option value="">Seleccione un cliente</option>
-              {clientes.map((cliente) => (
-                <option key={cliente._id} value={cliente.numeroIdentificacion}>
-                  {cliente.nombre}
-                </option>
-              ))}
-            </Form.Select>
+            />
           </Form.Group>
 
           {clases.length === 0 ? (

@@ -15,6 +15,8 @@ import {
   FaChartPie,
   FaPlus,
   FaSearch,
+  FaUser,
+  FaVideo, // Ícono para videos/asesoramiento
 } from "react-icons/fa";
 
 const DashboardLayout = () => {
@@ -88,11 +90,32 @@ const DashboardLayout = () => {
           <Nav.Link as={NavLink} to="/rutinas/consultar" className="text-white">
             <FaSearch className="me-2" /> Consultar rutina
           </Nav.Link>
+          <Nav.Link
+            as={NavLink}
+            to="/composicion-corporal"
+            className="text-white"
+          >
+            <FaUser className="me-2" /> Composición Corporal
+          </Nav.Link>
+          <Nav.Link
+            as={NavLink}
+            to="/consultar-composicion-corporal"
+            className="text-white"
+          >
+            <FaSearch className="me-2" /> Consultar Composición Corporal
+          </Nav.Link>
           <Nav.Link as={NavLink} to="/usuarios" className="text-white">
             <FaUsersCog className="me-2" /> Usuarios
           </Nav.Link>
           <Nav.Link as={NavLink} to="/indicadores" className="text-white">
             <FaChartPie className="me-2" /> Indicadores
+          </Nav.Link>
+          <Nav.Link
+            as={NavLink}
+            to="/videos-entrenamiento"
+            className="text-white"
+          >
+            <FaVideo className="me-2" /> Asesoramiento Ejercicios
           </Nav.Link>
           <Button
             variant="danger"

@@ -4,10 +4,8 @@ import { Form, Button, Container, Table } from "react-bootstrap";
 import axios from "axios";
 
 const Clases = () => {
-  console.log("Renderizando Clases.js - Componente Principal");
   const navigate = useNavigate();
   const [clases, setClases] = useState([]);
-  const [clientes, setClientes] = useState([]);
   const [formData, setFormData] = useState({
     numeroIdentificacion: "",
     nombre: "",
@@ -39,68 +37,46 @@ const Clases = () => {
       }
     };
 
-    const fetchClientes = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(
-          "http://localhost:5000/api/clientes/",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        console.log("Clientes obtenidos:", response.data);
-        setClientes(response.data);
-      } catch (err) {
-        setError(err.response?.data?.message || "Error al cargar los clientes");
-      }
-    };
-
     fetchClases();
-    fetchClientes();
   }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === "numeroIdentificacion") {
-      const clienteSeleccionado = clientes.find(
-        (c) => c.numeroIdentificacion === value
-      );
-      setFormData({
-        ...formData,
-        numeroIdentificacion: value,
-        nombre: clienteSeleccionado?.nombre || "",
-        apellido: clienteSeleccionado?.apellido || "",
-      });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleClaseChange = (e) => {
+    const selectedIndex = e.target.value;
+    const selectedClase = clases[selectedIndex] || {};
+    console.log("Clase seleccionada:", selectedClase);
+    setFormData({
+      ...formData,
+      entrenadorId: selectedClase.entrenadorId || "",
+      nombreClase: selectedClase.nombreClase || "",
+      dia: selectedClase.dia || "",
+      horarioInicio: selectedClase.horarioInicio || "",
+      horarioFin: selectedClase.horarioFin || "",
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
-    const requiredFields = [
-      "numeroIdentificacion",
-      "nombre",
-      "apellido",
-      "entrenadorId",
-      "nombreClase",
-      "dia",
-      "horarioInicio",
-      "horarioFin",
-    ];
-    const missingFields = requiredFields.filter((field) => !formData[field]);
-    if (missingFields.length > 0) {
-      setError(
-        `Por favor completa todos los campos: ${missingFields.join(", ")}`
-      );
-      return;
-    }
-
-    console.log("Datos enviados al registrar:", formData); // Depuración
+    console.log("Datos enviados al registrar:", formData);
     try {
       const token = localStorage.getItem("token");
+      // Validar que el numeroIdentificacion exista antes de registrar
+      const clienteResponse = await axios.get(
+        `http://localhost:5000/api/clientes/consultar/${formData.numeroIdentificacion}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!clienteResponse.data) {
+        throw new Error("Número de identificación no encontrado");
+      }
+
       const response = await axios.post(
         "http://localhost:5000/api/clases/registrar",
         formData,
@@ -122,9 +98,11 @@ const Clases = () => {
       });
     } catch (err) {
       setError(
-        err.response?.data?.message || "Error al registrar cliente en clase"
+        err.response?.data?.message ||
+          err.message ||
+          "Error al registrar cliente en clase"
       );
-      console.error("Error detallado:", err.response); // Depuración adicional
+      console.error("Error detallado:", err.response?.data || err.message);
     }
   };
 
@@ -134,7 +112,9 @@ const Clases = () => {
       const token = localStorage.getItem("token");
       const response = await axios.get(
         `http://localhost:5000/api/clases/consultar/${consultarId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       setClasesRegistradas(response.data);
       setError(null);
@@ -151,59 +131,19 @@ const Clases = () => {
       <h2>Lista de Clases Disponibles</h2>
       <Form onSubmit={handleSubmit}>
         <Form.Group className="mb-3">
-          <Form.Label>Seleccionar cliente</Form.Label>
-          <Form.Select
+          <Form.Label>Número de Identificación</Form.Label>
+          <Form.Control
+            type="text"
             name="numeroIdentificacion"
             value={formData.numeroIdentificacion}
             onChange={handleChange}
             required
-          >
-            <option value="">Seleccione un cliente</option>
-            {clientes.map((cliente, index) => (
-              <option key={index} value={cliente.numeroIdentificacion}>
-                {cliente.nombre} {cliente.apellido || ""}
-              </option>
-            ))}
-          </Form.Select>
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Nombre</Form.Label>
-          <Form.Control
-            type="text"
-            name="nombre"
-            value={formData.nombre}
-            onChange={handleChange}
-            readOnly
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Apellido</Form.Label>
-          <Form.Control
-            type="text"
-            name="apellido"
-            value={formData.apellido}
-            onChange={handleChange}
-            readOnly
+            placeholder="Ingresa el número de identificación"
           />
         </Form.Group>
         <Form.Group className="mb-3">
           <Form.Label>Seleccionar Clase</Form.Label>
-          <Form.Select
-            onChange={(e) => {
-              const selectedIndex = e.target.value;
-              const selectedClase = clases[selectedIndex] || {};
-              setFormData({
-                ...formData,
-                entrenadorId: selectedClase.entrenadorId || "",
-                nombreClase: selectedClase.nombreClase || "",
-                dia: selectedClase.dia || "",
-                horarioInicio: selectedClase.horarioInicio || "",
-                horarioFin: selectedClase.horarioFin || "",
-              });
-              console.log("Clase seleccionada:", selectedClase); // Depuración
-            }}
-            required
-          >
+          <Form.Select onChange={handleClaseChange} required>
             <option value="">Seleccione una clase</option>
             {clases.map((clase, index) => (
               <option key={index} value={index}>
@@ -216,7 +156,7 @@ const Clases = () => {
         <Button
           variant="primary"
           type="submit"
-          disabled={!formData.entrenadorId}
+          disabled={!formData.numeroIdentificacion || !formData.entrenadorId}
         >
           Registrar
         </Button>
