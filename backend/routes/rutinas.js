@@ -201,6 +201,7 @@ router.delete(
   verificarRol(["admin"]),
   async (req, res) => {
     try {
+      console.log("Intentando eliminar asignación - Usuario:", req.user);
       const rutinaAsignada = await RutinaAsignada.findByIdAndDelete(
         req.params.id
       );
@@ -222,8 +223,19 @@ router.delete(
 // Consultar todas las rutinas asignadas por número de identificación (Solo autenticados por ahora)
 router.get("/consultar/:numeroIdentificacion", protect, async (req, res) => {
   try {
-    const rutinasAsignadas = await RutinaAsignada.find({
+    // Find the client by numeroIdentificacion
+    const cliente = await Cliente.findOne({
       numeroIdentificacion: req.params.numeroIdentificacion,
+    });
+    if (!cliente) {
+      return res.status(404).json({
+        mensaje: "Cliente no encontrado",
+      });
+    }
+
+    // Query RutinaAsignada by clienteId instead of numeroIdentificacion
+    const rutinasAsignadas = await RutinaAsignada.find({
+      clienteId: cliente._id,
     })
       .populate("clienteId", "nombre apellido")
       .populate(
