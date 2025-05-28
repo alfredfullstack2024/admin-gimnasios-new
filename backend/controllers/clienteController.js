@@ -1,4 +1,5 @@
 const Cliente = require("../models/Cliente");
+const Membresia = require("../models/Membresia");
 
 // Obtener todos los clientes
 const obtenerClientes = async (req, res) => {
@@ -6,7 +7,7 @@ const obtenerClientes = async (req, res) => {
     const clientes = await Cliente.find().select(
       "nombre apellido email telefono direccion estado numeroIdentificacion fechaRegistro"
     );
-    console.log("Clientes obtenidos:", clientes); // Depuración
+    console.log("Clientes obtenidos:", clientes);
     res.status(200).json(clientes);
   } catch (error) {
     res
@@ -45,33 +46,28 @@ const crearCliente = async (req, res) => {
     } = req.body;
     console.log("Datos recibidos para crear cliente:", req.body);
 
-    // Validar campos obligatorios
     if (!nombre || !email || !numeroIdentificacion) {
       return res.status(400).json({
         message: "Nombre, email y número de identificación son obligatorios",
       });
     }
 
-    // Validar formato de email
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: "Correo electrónico inválido" });
     }
 
-    // Validar teléfono (si se proporciona, debe tener 10 dígitos)
     if (telefono && !/^\d{10}$/.test(telefono)) {
       return res
         .status(400)
         .json({ message: "Teléfono debe tener 10 dígitos" });
     }
 
-    // Validar estado (si se proporciona, debe ser "activo" o "inactivo")
     if (estado && !["activo", "inactivo"].includes(estado.toLowerCase())) {
       return res
         .status(400)
         .json({ message: "Estado debe ser 'activo' o 'inactivo'" });
     }
 
-    // Verificar unicidad de numeroIdentificacion
     const clienteExistente = await Cliente.findOne({ numeroIdentificacion });
     if (clienteExistente) {
       return res
@@ -95,7 +91,7 @@ const crearCliente = async (req, res) => {
   } catch (error) {
     console.error("Error al crear cliente:", error);
     res
-      .status(400)
+      .status(500)
       .json({ message: "Error al crear cliente: " + error.message });
   }
 };
@@ -133,33 +129,28 @@ const actualizarCliente = async (req, res) => {
       return res.status(404).json({ message: "Cliente no encontrado" });
     }
 
-    // Validar campos obligatorios
     if (!nombre || !email || !numeroIdentificacion) {
       return res.status(400).json({
         message: "Nombre, email y número de identificación son obligatorios",
       });
     }
 
-    // Validar formato de email
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: "Correo electrónico inválido" });
     }
 
-    // Validar teléfono (si se proporciona, debe tener 10 dígitos)
     if (telefono && !/^\d{10}$/.test(telefono)) {
       return res
         .status(400)
         .json({ message: "Teléfono debe tener 10 dígitos" });
     }
 
-    // Validar estado (si se proporciona, debe ser "activo" o "inactivo")
     if (estado && !["activo", "inactivo"].includes(estado.toLowerCase())) {
       return res
         .status(400)
         .json({ message: "Estado debe ser 'activo' o 'inactivo'" });
     }
 
-    // Verificar unicidad de numeroIdentificacion (si se actualiza)
     if (
       numeroIdentificacion &&
       numeroIdentificacion !== cliente.numeroIdentificacion
@@ -172,7 +163,6 @@ const actualizarCliente = async (req, res) => {
       }
     }
 
-    // Actualizar los campos manualmente
     cliente.nombre = nombre || cliente.nombre;
     cliente.apellido = apellido || "";
     cliente.email = email || cliente.email;
@@ -188,7 +178,7 @@ const actualizarCliente = async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar cliente:", error);
     res
-      .status(400)
+      .status(500)
       .json({ message: "Error al actualizar cliente: " + error.message });
   }
 };
@@ -208,6 +198,35 @@ const eliminarCliente = async (req, res) => {
   }
 };
 
+// Obtener el número de clientes activos (basado en membresías activas)
+const obtenerClientesActivos = async (req, res) => {
+  try {
+    console.log("Iniciando obtenerClientesActivos...");
+    const fechaActual = new Date();
+    console.log("Fecha actual:", fechaActual);
+
+    // Buscar membresías activas
+    const membresiasActivas = await Membresia.find({
+      estado: "activa",
+      fechafin: { $gt: fechaActual },
+    }).distinct("cliente");
+
+    console.log("Membresías activas encontradas:", membresiasActivas);
+
+    // Contar clientes únicos con membresías activas
+    const clientesActivos = membresiasActivas.length;
+    console.log("Clientes activos encontrados:", clientesActivos);
+
+    // Enviar respuesta
+    res.status(200).json({ clientesActivos });
+  } catch (error) {
+    console.error("Error al obtener clientes activos:", error.message);
+    res.status(500).json({
+      message: "Error al obtener clientes activos: " + error.message,
+    });
+  }
+};
+
 module.exports = {
   obtenerClientes,
   consultarClientePorCedula,
@@ -215,4 +234,5 @@ module.exports = {
   obtenerClientePorId,
   actualizarCliente,
   eliminarCliente,
+  obtenerClientesActivos,
 };

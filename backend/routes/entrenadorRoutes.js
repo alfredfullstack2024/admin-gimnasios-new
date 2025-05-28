@@ -1,29 +1,39 @@
 const express = require("express");
 const router = express.Router();
-const entrenadorController = require("../controllers/entrenadoresController"); // Cambiado de "entrenadorController" a "entrenadoresController"
-const { protect, verificarRol } = require("../middleware/authMiddleware");
+const entrenadorController = require("../controllers/entrenadoresController");
+const { protect, verificarPermisos } = require("../middleware/authMiddleware");
 
 console.log("Configurando rutas para entrenadores...");
 
-// Solo los administradores pueden crear, editar y eliminar entrenadores
-router.get("/", protect, entrenadorController.listarEntrenadores);
+// Rutas protegidas con permisos basados en authMiddleware.js
+router.get(
+  "/",
+  protect,
+  verificarPermisos(),
+  entrenadorController.listarEntrenadores
+);
 router.post(
   "/",
   protect,
-  verificarRol(["admin"]),
+  verificarPermisos(),
   entrenadorController.agregarEntrenador
 );
-router.get("/:id", protect, entrenadorController.obtenerEntrenadorPorId);
+router.get(
+  "/:id",
+  protect,
+  verificarPermisos(),
+  entrenadorController.obtenerEntrenadorPorId
+);
 router.put(
   "/:id",
   protect,
-  verificarRol(["admin"]),
+  verificarPermisos(),
   entrenadorController.editarEntrenador
 );
 router.delete(
   "/:id",
   protect,
-  verificarRol(["admin"]),
+  verificarPermisos(),
   entrenadorController.eliminarEntrenador
 );
 

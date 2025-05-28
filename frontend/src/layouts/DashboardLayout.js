@@ -9,10 +9,8 @@ import {
   FaShoppingCart,
   FaMoneyBillWave,
   FaChartBar,
-  FaUserCheck,
   FaDumbbell,
   FaUsersCog,
-  FaChartPie,
   FaPlus,
   FaSearch,
   FaUser,
@@ -78,9 +76,10 @@ const DashboardLayout = () => {
           <Nav.Link as={NavLink} to="/clases" className="text-white">
             <FaDumbbell className="me-2" /> Clases
           </Nav.Link>
-          <Nav.Link as={NavLink} to="/asistencias" className="text-white">
+          {/* Comentamos la opción de Asistencias para ocultarla del menú */}
+          {/* <Nav.Link as={NavLink} to="/asistencias" className="text-white">
             <FaUserCheck className="me-2" /> Asistencias
-          </Nav.Link>
+          </Nav.Link> */}
           <Nav.Link as={NavLink} to="/rutinas/crear" className="text-white">
             <FaDumbbell className="me-2" /> Crear rutina
           </Nav.Link>
@@ -107,9 +106,10 @@ const DashboardLayout = () => {
           <Nav.Link as={NavLink} to="/usuarios" className="text-white">
             <FaUsersCog className="me-2" /> Usuarios
           </Nav.Link>
-          <Nav.Link as={NavLink} to="/indicadores" className="text-white">
+          {/* Comentamos la opción de Indicadores para ocultarla del menú */}
+          {/* <Nav.Link as={NavLink} to="/indicadores" className="text-white">
             <FaChartPie className="me-2" /> Indicadores
-          </Nav.Link>
+          </Nav.Link> */}
           <Nav.Link
             as={NavLink}
             to="/videos-entrenamiento"

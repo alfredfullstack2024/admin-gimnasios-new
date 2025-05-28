@@ -11,146 +11,71 @@ const Sidebar = () => {
     return null;
   }
   const { user } = context;
-  console.log("Usuario en Sidebar:", user); // Depuración
+  console.log("Usuario en Sidebar:", user);
+
+  // Definir los ítems del menú según el rol
+  const menuItems = {
+    admin: [
+      { label: "📊 Panel", path: "/dashboard" },
+      { label: "🧍 Clientes", path: "/clientes" },
+      { label: "📦 Productos", path: "/productos" },
+      { label: "🎟️ Membresías", path: "/membresias" },
+      { label: "💵 Pagos", path: "/pagos" },
+      { label: "📊 Contabilidad", path: "/contabilidad" },
+      { label: "👥 Usuarios", path: "/usuarios" },
+      { label: "🏋️‍♂️ Entrenadores", path: "/entrenadores" },
+      { label: "🕒 Clases", path: "/clases" },
+      { label: "📋 Registrar Asistencia", path: "/registrar-asistencia" },
+      { label: "📝 Suscripción", path: "/suscripcion" },
+      { label: "📈 Indicadores", path: "/indicadores" },
+      { label: "🏋️ Rutinas", path: "/rutinas/crear" },
+      { label: "📋 Asignar Rutina", path: "/rutinas/asignar" },
+      { label: "📏 Composición Corporal", path: "/composicion-corporal" },
+      {
+        label: "🔍 Consultar Composición",
+        path: "/consultar-composicion-corporal",
+      },
+      { label: "🎥 Videos Entrenamiento", path: "/videos-entrenamiento" },
+    ],
+    entrenador: [
+      { label: "🏋️ Rutinas", path: "/rutinas/crear" },
+      {
+        label: "📋 Asignliteral: true Asignar Rutina",
+        path: "/rutinas/asignar",
+      },
+      { label: "📏 Composición Corporal", path: "/composicion-corporal" },
+      {
+        label: "🔍 Consultar Composición",
+        path: "/consultar-composicion-corporal",
+      },
+      { label: "🎥 Videos Entrenamiento", path: "/videos-entrenamiento" },
+    ],
+  };
+
+  // Seleccionar los ítems según el rol del usuario
+  const itemsToShow = user ? menuItems[user.rol] || menuItems.entrenador : [];
+
   console.log(
     "Renderizando Sidebar... Items:",
-    [
-      "Panel",
-      "Clientes",
-      "Productos",
-      "Membresías",
-      "Pagos",
-      user && user.rol === "admin" ? ["Contabilidad", "Usuarios"] : [],
-      "Entrenadores",
-      "Clases",
-      "Registrar Asistencia",
-      "Suscripción",
-      "Indicadores",
-    ].flat()
-  ); // Depuración de items renderizados
-
-  // Permiso para administrador
-  const esAdmin = user && user.rol === "admin";
+    itemsToShow.map((item) => item.label)
+  );
 
   return (
     <div className="sidebar p-3 bg-dark text-white vh-100">
       <h4 className="text-center mb-4">🏋️ Admin Gym</h4>
       <ListGroup variant="flush">
-        <ListGroup.Item
-          as={NavLink}
-          to="/dashboard"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          📊 Panel
-        </ListGroup.Item>
-        <ListGroup.Item
-          as={NavLink}
-          to="/clientes"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          🧍 Clientes
-        </ListGroup.Item>
-        <ListGroup.Item
-          as={NavLink}
-          to="/productos"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          📦 Productos
-        </ListGroup.Item>
-        <ListGroup.Item
-          as={NavLink}
-          to="/membresias"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          🎟️ Membresías
-        </ListGroup.Item>
-        <ListGroup.Item
-          as={NavLink}
-          to="/pagos"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          💵 Pagos
-        </ListGroup.Item>
-
-        {/* Secciones exclusivas para administradores */}
-        {esAdmin && (
-          <>
-            <ListGroup.Item
-              as={NavLink}
-              to="/contabilidad"
-              className={({ isActive }) =>
-                isActive ? "sidebar-item active" : "sidebar-item"
-              }
-            >
-              📊 Contabilidad
-            </ListGroup.Item>
-            <ListGroup.Item
-              as={NavLink}
-              to="/usuarios"
-              className={({ isActive }) =>
-                isActive ? "sidebar-item active" : "sidebar-item"
-              }
-            >
-              👥 Usuarios
-            </ListGroup.Item>
-          </>
-        )}
-
-        <ListGroup.Item
-          as={NavLink}
-          to="/entrenadores"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          🏋️‍♂️ Entrenadores
-        </ListGroup.Item>
-        <ListGroup.Item
-          as={NavLink}
-          to="/clases"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          🕒 Clases
-        </ListGroup.Item>
-        <ListGroup.Item
-          as={NavLink}
-          to="/registrar-asistencia"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          📋 Registrar Asistencia
-        </ListGroup.Item>
-        <ListGroup.Item
-          as={NavLink}
-          to="/suscripcion"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          📝 Suscripción
-        </ListGroup.Item>
-        <ListGroup.Item
-          as={NavLink}
-          to="/indicadores"
-          className={({ isActive }) =>
-            isActive ? "sidebar-item active" : "sidebar-item"
-          }
-        >
-          📈 Indicadores
-        </ListGroup.Item>
+        {itemsToShow.map((item) => (
+          <ListGroup.Item
+            key={item.path}
+            as={NavLink}
+            to={item.path}
+            className={({ isActive }) =>
+              isActive ? "sidebar-item active" : "sidebar-item"
+            }
+          >
+            {item.label}
+          </ListGroup.Item>
+        ))}
       </ListGroup>
     </div>
   );

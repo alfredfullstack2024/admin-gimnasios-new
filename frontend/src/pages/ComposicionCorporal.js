@@ -5,8 +5,14 @@ import { Container, Form, Button, Alert } from "react-bootstrap";
 
 const ComposicionCorporal = () => {
   const [formData, setFormData] = useState({
-    clienteId: "",
+    numeroIdentificacion: "", // Cambiado de clienteId para coincidir con el backend
+    fecha: "",
     peso: "",
+    altura: "", // Añadido para coincidir con el backend
+    imc: "",
+    porcentajeGrasa: "",
+    porcentajeMusculo: "", // Cambiado de masaMuscular para coincidir con el backend
+    notas: "", // Añadido para notas adicionales
     medidas: {
       brazoDerecho: "",
       brazoIzquierdo: "",
@@ -16,8 +22,6 @@ const ComposicionCorporal = () => {
       piernaDerecha: "",
       piernaIzquierda: "",
     },
-    porcentajeGrasa: "",
-    masaMuscular: "",
     objetivo: "",
     antecedentesMedicos: {
       problemasFisicos: "",
@@ -60,9 +64,11 @@ const ComposicionCorporal = () => {
         ...prev,
         [name]:
           name === "peso" ||
+          name === "altura" ||
+          name === "imc" ||
           name === "porcentajeGrasa" ||
-          name === "masaMuscular"
-            ? Number(value)
+          name === "porcentajeMusculo"
+            ? Number(value) || ""
             : value,
       }));
     }
@@ -72,18 +78,39 @@ const ComposicionCorporal = () => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    // Mapear datos al formato esperado por el backend
+    const dataToSend = {
+      numeroIdentificacion: formData.numeroIdentificacion,
+      fecha: formData.fecha || new Date().toISOString().split("T")[0], // Valor por defecto si no se proporciona
+      peso: formData.peso,
+      altura: formData.altura,
+      imc: formData.imc,
+      porcentajeGrasa: formData.porcentajeGrasa,
+      porcentajeMusculo: formData.porcentajeMusculo,
+      notas:
+        `${formData.antecedentesMedicos.problemasFisicos}\n${formData.antecedentesMedicos.notasAdicionales}` ||
+        "",
+      medidas: formData.medidas, // Incluir medidas como objeto adicional
+      objetivo: formData.objetivo,
+    };
+
     try {
-      const dataToSend = {
-        ...formData,
-        peso: Number(formData.peso),
-        porcentajeGrasa: Number(formData.porcentajeGrasa),
-        masaMuscular: Number(formData.masaMuscular),
-      };
-      await crearComposicionCorporal(dataToSend);
+      console.log(
+        "Enviando datos al backend a /api/composicion-corporal:",
+        dataToSend
+      ); // Depuración con URL explícita
+      const response = await crearComposicionCorporal(dataToSend); // Usar la función corregida
       setSuccess("Composición corporal guardada con éxito!");
       setFormData({
-        clienteId: "",
+        numeroIdentificacion: "",
+        fecha: "",
         peso: "",
+        altura: "",
+        imc: "",
+        porcentajeGrasa: "",
+        porcentajeMusculo: "",
+        notas: "",
         medidas: {
           brazoDerecho: "",
           brazoIzquierdo: "",
@@ -93,13 +120,15 @@ const ComposicionCorporal = () => {
           piernaDerecha: "",
           piernaIzquierda: "",
         },
-        porcentajeGrasa: "",
-        masaMuscular: "",
         objetivo: "",
         antecedentesMedicos: { problemasFisicos: "", notasAdicionales: "" },
       });
     } catch (err) {
-      setError(err.message || "Error al guardar la composición corporal.");
+      setError(
+        err.message ||
+          "Error al guardar la composición corporal. Verifica los datos."
+      );
+      console.error("Error detallado:", err.response?.data || err.message);
     }
   };
 
@@ -110,20 +139,32 @@ const ComposicionCorporal = () => {
       {success && <Alert variant="success">{success}</Alert>}
       <Form onSubmit={handleSubmit}>
         <Form.Group className="mb-3">
-          <Form.Label>Cliente</Form.Label>
+          <Form.Label>Cliente (Número de Identificación)</Form.Label>
           <Form.Select
-            name="clienteId"
-            value={formData.clienteId}
+            name="numeroIdentificacion"
+            value={formData.numeroIdentificacion}
             onChange={handleChange}
             required
           >
             <option value="">Seleccione un cliente</option>
             {clientes.map((cliente) => (
-              <option key={cliente._id} value={cliente._id}>
-                {cliente.nombre} {cliente.apellido}
+              <option key={cliente._id} value={cliente.numeroIdentificacion}>
+                {cliente.nombre} {cliente.apellido} (
+                {cliente.numeroIdentificacion})
               </option>
             ))}
           </Form.Select>
+        </Form.Group>
+
+        <Form.Group className="mb-3">
+          <Form.Label>Fecha</Form.Label>
+          <Form.Control
+            type="date"
+            name="fecha"
+            value={formData.fecha}
+            onChange={handleChange}
+            required
+          />
         </Form.Group>
 
         <Form.Group className="mb-3">
@@ -134,6 +175,47 @@ const ComposicionCorporal = () => {
             value={formData.peso}
             onChange={handleChange}
             required
+          />
+        </Form.Group>
+
+        <Form.Group className="mb-3">
+          <Form.Label>Altura (cm)</Form.Label>
+          <Form.Control
+            type="number"
+            name="altura"
+            value={formData.altura}
+            onChange={handleChange}
+            required
+          />
+        </Form.Group>
+
+        <Form.Group className="mb-3">
+          <Form.Label>IMC</Form.Label>
+          <Form.Control
+            type="number"
+            name="imc"
+            value={formData.imc}
+            onChange={handleChange}
+          />
+        </Form.Group>
+
+        <Form.Group className="mb-3">
+          <Form.Label>Porcentaje de Grasa (%)</Form.Label>
+          <Form.Control
+            type="number"
+            name="porcentajeGrasa"
+            value={formData.porcentajeGrasa}
+            onChange={handleChange}
+          />
+        </Form.Group>
+
+        <Form.Group className="mb-3">
+          <Form.Label>Porcentaje de Músculo (%)</Form.Label>
+          <Form.Control
+            type="number"
+            name="porcentajeMusculo"
+            value={formData.porcentajeMusculo}
+            onChange={handleChange}
           />
         </Form.Group>
 
@@ -149,26 +231,6 @@ const ComposicionCorporal = () => {
               onChange={handleChange}
             />
           ))}
-        </Form.Group>
-
-        <Form.Group className="mb-3">
-          <Form.Label>Porcentaje de Grasa (%)</Form.Label>
-          <Form.Control
-            type="number"
-            name="porcentajeGrasa"
-            value={formData.porcentajeGrasa}
-            onChange={handleChange}
-          />
-        </Form.Group>
-
-        <Form.Group className="mb-3">
-          <Form.Label>Masa Muscular (kg)</Form.Label>
-          <Form.Control
-            type="number"
-            name="masaMuscular"
-            value={formData.masaMuscular}
-            onChange={handleChange}
-          />
         </Form.Group>
 
         <Form.Group className="mb-3">

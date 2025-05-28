@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Container, Button, Row, Col } from "react-bootstrap";
+import { Container, Button, Row, Col, Card } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 
 const VideosEntrenamiento = () => {
@@ -65,7 +65,7 @@ const VideosEntrenamiento = () => {
       "Remo al mentón",
       "Press Arnold",
       "Elevaciones traseras",
-      "Press con mancuernas", // Mantenemos una sola instancia
+      "Press con mancuernas",
       "Rotaciones externas",
       "Plancha con elevación",
     ],
@@ -93,7 +93,7 @@ const VideosEntrenamiento = () => {
     "Press declinado": "https://www.youtube.com/embed/cJYRrM5cpbo",
     "Pullover con mancuerna": "https://www.youtube.com/embed/r_KKz9i5x-E",
     "Push-up diamante": "https://www.youtube.com/embed/ryOSB7evhiI",
-    "Press con mancuernas": "https://www.youtube.com/embed/R3eCn7-9wC0", // Usamos una sola URL para ambos grupos
+    "Press con mancuernas": "https://www.youtube.com/embed/R3eCn7-9wC0",
     Sentadillas: "https://www.youtube.com/embed/Ur-zj6AiO44",
     "Peso muerto": "https://www.youtube.com/embed/VLW-vK6ZF94",
     Zancadas: "https://www.youtube.com/embed/lT-oysQ-qKY",
@@ -110,7 +110,7 @@ const VideosEntrenamiento = () => {
     "Remo con mancuerna": "https://www.youtube.com/embed/cA07hN6sUvY",
     "Peso muerto rumano": "https://www.youtube.com/embed/VLW-vK6ZF94",
     "Remo en máquina": "https://www.youtube.com/embed/4o8scFhoDdE",
-    "Face pull": "https://www.youtube.com/embed/IeOqdw9WI90",
+    "Face pull": "https://www.youtube.com/embed/IeOqdw9ZfI90",
     "Pull-over con barra": "https://www.youtube.com/embed/r4k1Wm_RjGc",
     Hiperextensiones: "https://www.youtube.com/embed/vZ65hayXv9k",
     "Jalón tras nuca": "https://www.youtube.com/embed/qwbHWsm0EPw",
@@ -155,26 +155,108 @@ const VideosEntrenamiento = () => {
   };
 
   return (
-    <Container className="mt-4">
-      <h2>Videos de Entrenamiento</h2>
-      <Button
-        variant="secondary"
-        className="mb-3"
-        onClick={() => navigate("/dashboard")}
+    <Container className="mt-4 mb-5">
+      <h2
+        className="text-center mb-4"
+        style={{ color: "#343a40", fontWeight: "bold" }}
       >
-        Volver al Inicio
-      </Button>
+        Videos de Entrenamiento
+      </h2>
 
+      {/* Botón Volver al Inicio */}
+      <div className="text-start mb-4">
+        <Button
+          variant="secondary"
+          onClick={() => navigate("/dashboard")}
+          style={{
+            backgroundColor: "#6c757d",
+            border: "none",
+            borderRadius: "20px",
+            padding: "10px 20px",
+            fontWeight: "bold",
+          }}
+        >
+          Volver al Inicio
+        </Button>
+      </div>
+
+      {/* Sección del Video */}
+      <div className="mb-5">
+        <Card
+          style={{
+            border: "none",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+            borderRadius: "15px",
+            overflow: "hidden",
+          }}
+        >
+          <Card.Body className="p-0">
+            {videoUrl ? (
+              <iframe
+                width="100%"
+                height="450"
+                src={videoUrl}
+                title="Video de entrenamiento"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ borderRadius: "15px 15px 0 0" }}
+              ></iframe>
+            ) : (
+              <div
+                className="d-flex justify-content-center align-items-center"
+                style={{
+                  height: "450px",
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: "15px 15px 0 0",
+                }}
+              >
+                <p className="text-muted mb-0">
+                  Selecciona un ejercicio para ver el video.
+                </p>
+              </div>
+            )}
+          </Card.Body>
+        </Card>
+      </div>
+
+      {/* Sección de Ejercicios por Grupo Muscular */}
       {Object.keys(ejerciciosPorGrupo).map((grupo) => (
-        <div key={grupo} className="mb-4">
-          <h3>{grupo}</h3>
+        <div key={grupo} className="mb-5">
+          <h3
+            className="mb-4"
+            style={{
+              color: "#007bff",
+              fontWeight: "bold",
+              borderBottom: "2px solid #007bff",
+              paddingBottom: "8px",
+            }}
+          >
+            {grupo}
+          </h3>
           <Row>
             {ejerciciosPorGrupo[grupo].map((ejercicio) => (
-              <Col key={ejercicio} xs={6} md={4} lg={3} className="mb-2">
+              <Col key={ejercicio} xs={6} md={4} lg={3} className="mb-3">
                 <Button
-                  variant="outline-primary"
                   onClick={() => loadVideo(ejercicio)}
-                  block
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#007bff",
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "12px",
+                    fontWeight: "500",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 2px 8px rgba(0, 123, 255, 0.2)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = "#0056b3";
+                    e.target.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = "#007bff";
+                    e.target.style.transform = "scale(1)";
+                  }}
                 >
                   {ejercicio}
                 </Button>
@@ -183,24 +265,6 @@ const VideosEntrenamiento = () => {
           </Row>
         </div>
       ))}
-
-      <div>
-        <h4>Video Tutorial</h4>
-        <p>URL actual: {videoUrl}</p>
-        {videoUrl ? (
-          <iframe
-            width="100%"
-            height="450"
-            src={videoUrl}
-            title="Video de entrenamiento"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          ></iframe>
-        ) : (
-          <p>Selecciona un ejercicio para ver el video.</p>
-        )}
-      </div>
     </Container>
   );
 };

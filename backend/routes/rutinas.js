@@ -3,9 +3,9 @@ const router = express.Router();
 const Rutina = require("../models/Rutina");
 const RutinaAsignada = require("../models/RutinaAsignada");
 const Cliente = require("../models/Cliente");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, verificarRol } = require("../middleware/authMiddleware");
 
-// Crear una rutina (Protegida)
+// Crear una rutina (Solo autenticados por ahora)
 router.post("/", protect, async (req, res) => {
   try {
     const {
@@ -16,8 +16,8 @@ router.post("/", protect, async (req, res) => {
       descripcion,
     } = req.body;
 
-    console.log("Datos recibidos:", req.body); // Depuración
-    console.log("Usuario autenticado:", req.user); // Depuración
+    console.log("Datos recibidos:", req.body);
+    console.log("Usuario autenticado:", req.user);
 
     if (!grupoMuscular || !nombreEjercicio || !series || !repeticiones) {
       return res.status(400).json({
@@ -32,11 +32,11 @@ router.post("/", protect, async (req, res) => {
       series,
       repeticiones,
       descripcion,
-      creadoPor: req.user._id, // Cambiado de req.user.id a req.user._id
+      creadoPor: req.user._id,
     });
 
     await nuevaRutina.save();
-    console.log("Rutina guardada:", nuevaRutina); // Depuración
+    console.log("Rutina guardada:", nuevaRutina);
     res
       .status(201)
       .json({ mensaje: "Rutina creada con éxito", rutina: nuevaRutina });
@@ -50,7 +50,7 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
-// Listar todas las rutinas (Protegida)
+// Listar todas las rutinas (Solo autenticados por ahora)
 router.get("/", protect, async (req, res) => {
   try {
     const rutinas = await Rutina.find().populate({
@@ -67,7 +67,7 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
-// Actualizar una rutina (Protegida)
+// Actualizar una rutina (Solo autenticados por ahora)
 router.put("/:id", protect, async (req, res) => {
   try {
     const {
@@ -93,7 +93,7 @@ router.put("/:id", protect, async (req, res) => {
         series,
         repeticiones,
         descripcion,
-        creadoPor: req.user._id, // Cambiado de req.user.id a req.user._id
+        creadoPor: req.user._id,
       },
       { new: true }
     );
@@ -114,7 +114,7 @@ router.put("/:id", protect, async (req, res) => {
   }
 });
 
-// Asignar una rutina a un cliente (Protegida)
+// Asignar una rutina a un cliente (Solo autenticados por ahora)
 router.post("/asignar", protect, async (req, res) => {
   try {
     const { clienteId, rutinaId, diasEntrenamiento, diasDescanso } = req.body;
@@ -142,7 +142,7 @@ router.post("/asignar", protect, async (req, res) => {
       rutinaId,
       diasEntrenamiento,
       diasDescanso,
-      asignadaPor: req.user._id, // Cambiado de req.user.id a req.user._id
+      asignadaPor: req.user._id,
     });
 
     await rutinaAsignada.save();
@@ -157,7 +157,7 @@ router.post("/asignar", protect, async (req, res) => {
   }
 });
 
-// Actualizar una asignación de rutina (Protegida)
+// Actualizar una asignación de rutina (Solo autenticados por ahora)
 router.put("/asignar/:id", protect, async (req, res) => {
   try {
     const { clienteId, rutinaId, diasEntrenamiento, diasDescanso } = req.body;
@@ -176,7 +176,7 @@ router.put("/asignar/:id", protect, async (req, res) => {
         rutinaId,
         diasEntrenamiento,
         diasDescanso,
-        asignadaPor: req.user._id, // Cambiado de req.user.id a req.user._id
+        asignadaPor: req.user._id,
       },
       { new: true }
     );
@@ -194,27 +194,32 @@ router.put("/asignar/:id", protect, async (req, res) => {
   }
 });
 
-// Eliminar una asignación de rutina (Protegida)
-router.delete("/asignar/:id", protect, async (req, res) => {
-  try {
-    const rutinaAsignada = await RutinaAsignada.findByIdAndDelete(
-      req.params.id
-    );
+// Eliminar una asignación de rutina (Solo admins)
+router.delete(
+  "/asignar/:id",
+  protect,
+  verificarRol(["admin"]),
+  async (req, res) => {
+    try {
+      const rutinaAsignada = await RutinaAsignada.findByIdAndDelete(
+        req.params.id
+      );
 
-    if (!rutinaAsignada) {
-      return res.status(404).json({ mensaje: "Asignación no encontrada" });
+      if (!rutinaAsignada) {
+        return res.status(404).json({ mensaje: "Asignación no encontrada" });
+      }
+
+      res.json({ mensaje: "Asignación eliminada con éxito" });
+    } catch (err) {
+      console.error("Error al eliminar asignación:", err);
+      res
+        .status(500)
+        .json({ mensaje: "Error al eliminar asignación", error: err.message });
     }
-
-    res.json({ mensaje: "Asignación eliminada con éxito" });
-  } catch (err) {
-    console.error("Error al eliminar asignación:", err);
-    res
-      .status(500)
-      .json({ mensaje: "Error al eliminar asignación", error: err.message });
   }
-});
+);
 
-// Consultar todas las rutinas asignadas por número de identificación (Protegida)
+// Consultar todas las rutinas asignadas por número de identificación (Solo autenticados por ahora)
 router.get("/consultar/:numeroIdentificacion", protect, async (req, res) => {
   try {
     const rutinasAsignadas = await RutinaAsignada.find({
@@ -232,13 +237,12 @@ router.get("/consultar/:numeroIdentificacion", protect, async (req, res) => {
       });
     }
 
-    // Formatear la respuesta para que coincida con lo que espera el frontend
     const formattedRutinas = rutinasAsignadas.map((rutinaAsignada) => ({
       nombreRutina: rutinaAsignada.rutinaId.nombreEjercicio,
       ejercicios: [
         `${rutinaAsignada.rutinaId.grupoMuscular}: ${rutinaAsignada.rutinaId.series} series x ${rutinaAsignada.rutinaId.repeticiones} repeticiones`,
       ],
-      duracion: rutinaAsignada.diasEntrenamiento * 60, // Suponiendo 60 minutos por día de entrenamiento
+      duracion: rutinaAsignada.diasEntrenamiento * 60,
       fechaAsignacion: rutinaAsignada.createdAt,
     }));
 

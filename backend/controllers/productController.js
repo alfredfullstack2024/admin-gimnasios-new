@@ -5,7 +5,7 @@ const listarProductos = async (req, res) => {
   try {
     console.log("Solicitud para listar productos recibida");
     const productos = await Product.find().select(
-      "nombre descripcion precio stock estado fechaRegistro updatedAt createdAt"
+      "nombre descripcion precio stock estado updatedAt createdAt" // Eliminado fechaRegistro
     );
     console.log("Productos encontrados:", productos);
     if (!productos || productos.length === 0) {
@@ -25,7 +25,7 @@ const listarProductos = async (req, res) => {
 const obtenerProductoPorId = async (req, res) => {
   try {
     const producto = await Product.findById(req.params.id).select(
-      "nombre descripcion precio stock estado fechaRegistro updatedAt createdAt"
+      "nombre descripcion precio stock estado updatedAt createdAt" // Eliminado fechaRegistro
     );
     if (!producto) {
       return res.status(404).json({ message: "Producto no encontrado" });
@@ -51,7 +51,6 @@ const agregarProducto = async (req, res) => {
       precio,
       stock: stock || 0,
       estado: estado || "activo",
-      fechaRegistro: Date.now(),
       updatedAt: Date.now(),
     });
 
@@ -102,12 +101,10 @@ const eliminarProducto = async (req, res) => {
     // Validar si el producto es "Mensualidad" o "Clase"
     if (producto.nombre === "Mensualidad" || producto.nombre === "Clase") {
       console.log(`Intento de eliminar producto base: ${producto.nombre}`);
-      return res
-        .status(403)
-        .json({
-          message:
-            "No se puede eliminar este producto porque es un producto base.",
-        });
+      return res.status(403).json({
+        message:
+          "No se puede eliminar este producto porque es un producto base.",
+      });
     }
 
     await Product.findByIdAndDelete(req.params.id);

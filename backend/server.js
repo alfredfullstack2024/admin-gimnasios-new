@@ -1,9 +1,8 @@
 require("dotenv").config();
 
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
-const connectDB = require("./config/db");
+const { connectDB, mongoose } = require("./config/db");
 const { protect } = require("./middleware/authMiddleware");
 
 // Validar variables de entorno
@@ -17,22 +16,26 @@ if (!process.env.MONGO_URI) {
 const app = express();
 
 // Middleware
-app.use(cors({ origin: "http://localhost:3000" })); // Permitir solo el frontend
+app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json());
 
 // Middleware para registrar solicitudes entrantes
 app.use((req, res, next) => {
-  console.log(`📩 Solicitud recibida: ${req.method} ${req.url}`);
+  console.log(
+    `📩 Solicitud recibida: ${req.method} ${
+      req.url
+    } - Headers: ${JSON.stringify(req.headers)}`
+  );
   next();
 });
 
-// Importar y registrar modelos
+// Importar y registrar modelos sin declarar mongoose nuevamente
 require("./models/Usuario");
 require("./models/Contabilidad");
 require("./models/Entrenador");
 require("./models/Cliente");
 require("./models/RegistroClases");
-require("./models/ComposicionCorporal"); // Añadido el modelo ComposicionCorporal
+require("./models/ComposicionCorporal");
 
 // Conectar a MongoDB
 connectDB();
@@ -44,19 +47,29 @@ const membresiaRoutes = require("./routes/membresiaRoutes");
 const entrenadorRoutes = require("./routes/entrenadorRoutes");
 const productRoutes = require("./routes/productRoutes");
 const pagoRoutes = require("./routes/pagoRoutes");
-const transaccionRoutes = require("./routes/transaccionRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const claseRoutes = require("./routes/claseRoutes");
-const contabilidadRoutes = require("./routes/contabilidad");
+const contabilidad = require("./routes/contabilidad"); // Corrección aquí
 const indicadorRoutes = require("./routes/indicadorRoutes");
 const asistenciaRoutes = require("./routes/asistenciaRoutes");
 const rutinaRoutes = require("./routes/rutinas");
-const composicionCorporalRoutes = require("./routes/composicionCorporal"); // Añadida la importación de rutas para ComposicionCorporal
+const composicionCorporalRoutes = require("./routes/composicionCorporal");
 console.log("Rutas cargadas:", {
-  clienteRoutes,
-  claseRoutes,
-  composicionCorporalRoutes, // Añadido a los logs para verificar
+  clienteRoutes: clienteRoutes.name || "clienteRoutes",
+  membresiaRoutes: membresiaRoutes.name || "membresiaRoutes",
+  entrenadorRoutes: entrenadorRoutes.name || "entrenadorRoutes",
+  productRoutes: productRoutes.name || "productRoutes",
+  pagoRoutes: pagoRoutes.name || "pagoRoutes",
+  authRoutes: authRoutes.name || "authRoutes",
+  userRoutes: userRoutes.name || "userRoutes",
+  claseRoutes: claseRoutes.name || "claseRoutes",
+  contabilidad: contabilidad.name || "contabilidad", // Corrección aquí
+  indicadorRoutes: indicadorRoutes.name || "indicadorRoutes",
+  asistenciaRoutes: asistenciaRoutes.name || "asistenciaRoutes",
+  rutinaRoutes: rutinaRoutes.name || "rutinas",
+  composicionCorporalRoutes:
+    composicionCorporalRoutes.name || "composicionCorporalRoutes",
 });
 
 // Rutas
@@ -65,15 +78,14 @@ app.use("/api/membresias", membresiaRoutes);
 app.use("/api/entrenadores", entrenadorRoutes);
 app.use("/api/productos", productRoutes);
 app.use("/api/pagos", pagoRoutes);
-app.use("/api/transacciones", protect, transaccionRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", protect, userRoutes);
 app.use("/api/clases", protect, claseRoutes);
-app.use("/api/contabilidad", protect, contabilidadRoutes);
+app.use("/api/contabilidad", protect, contabilidad); // Corrección aquí
 app.use("/api/indicadores", protect, indicadorRoutes);
 app.use("/api/asistencias", protect, asistenciaRoutes);
 app.use("/api/rutinas", protect, rutinaRoutes);
-app.use("/api/composicionCorporal", protect, composicionCorporalRoutes); // Añadida la ruta para ComposicionCorporal
+app.use("/api/composicion-corporal", protect, composicionCorporalRoutes);
 
 // Ruta raíz para verificar que el servidor está funcionando
 app.get("/", (req, res) => {

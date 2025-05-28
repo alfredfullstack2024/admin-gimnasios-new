@@ -5,7 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import DashboardLayout from "./layouts/DashboardLayout";
 import PrivateRoute from "./components/PrivateRoute";
 
@@ -19,7 +19,7 @@ import ConsultaUsuario from "./pages/ConsultaUsuario";
 import Dashboard from "./pages/Dashboard";
 import Suscripcion from "./pages/Suscripcion";
 import ConsultarRutina from "./pages/ConsultarRutina";
-import VideosEntrenamiento from "./pages/videos/VideosEntrenamiento"; // Importación corregida
+import VideosEntrenamiento from "./pages/videos/VideosEntrenamiento";
 
 // Clientes
 import ListaClientes from "./pages/ListaClientes";
@@ -74,6 +74,25 @@ import ConsultarComposicionCorporal from "./pages/ConsultarComposicionCorporal";
 // Indicadores
 import Indicadores from "./pages/Indicadores";
 
+// Componente para proteger rutas basadas en roles
+const RoleBasedRoute = ({ element, allowedRoles }) => {
+  const { user } = useAuth();
+
+  if (!user || !user.rol) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles.includes("admin") && user.rol === "admin") {
+    return element;
+  }
+
+  if (!allowedRoles.includes(user.rol)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return element;
+};
+
 const App = () => {
   return (
     <Router>
@@ -97,77 +116,301 @@ const App = () => {
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/suscripcion" element={<Suscripcion />} />
-              <Route path="/consultar-rutina" element={<ConsultarRutina />} />
-              <Route path="/rutinas/consultar" element={<ConsultarRutina />} />
-              {/* Clientes */}
-              <Route path="/clientes" element={<ListaClientes />} />
-              <Route path="/clientes/crear" element={<CrearCliente />} />
-              <Route path="/clientes/editar/:id" element={<EditarCliente />} />
-              {/* Membresías */}
-              <Route path="/membresias" element={<Membresias />} />
-              <Route path="/membresias/crear" element={<CrearMembresia />} />
+
+              {/* Rutas para Recepcionistas y Admins */}
+              <Route
+                path="/consultar-rutina"
+                element={
+                  <RoleBasedRoute
+                    element={<ConsultarRutina />}
+                    allowedRoles={["recepcionista", "entrenador", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/rutinas/consultar"
+                element={
+                  <RoleBasedRoute
+                    element={<ConsultarRutina />}
+                    allowedRoles={["recepcionista", "entrenador", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/clientes"
+                element={
+                  <RoleBasedRoute
+                    element={<ListaClientes />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/clientes/crear"
+                element={
+                  <RoleBasedRoute
+                    element={<CrearCliente />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/clientes/editar/:id"
+                element={
+                  <RoleBasedRoute
+                    element={<EditarCliente />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/membresias"
+                element={
+                  <RoleBasedRoute
+                    element={<Membresias />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/membresias/crear"
+                element={
+                  <RoleBasedRoute
+                    element={<CrearMembresia />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
               <Route
                 path="/membresias/editar/:id"
-                element={<EditarMembresia />}
+                element={
+                  <RoleBasedRoute
+                    element={<EditarMembresia />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
               />
-              {/* Entrenadores */}
-              <Route path="/entrenadores" element={<Entrenadores />} />
-              <Route path="/entrenadores/crear" element={<CrearEntrenador />} />
+              <Route
+                path="/entrenadores"
+                element={
+                  <RoleBasedRoute
+                    element={<Entrenadores />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/entrenadores/crear"
+                element={
+                  <RoleBasedRoute
+                    element={<CrearEntrenador />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
               <Route
                 path="/entrenadores/editar/:id"
-                element={<EditarEntrenador />}
+                element={
+                  <RoleBasedRoute
+                    element={<EditarEntrenador />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
               />
-              {/* Productos */}
-              <Route path="/productos" element={<Productos />} />
-              <Route path="/productos/crear" element={<CrearProducto />} />
+              <Route
+                path="/productos"
+                element={
+                  <RoleBasedRoute
+                    element={<Productos />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/productos/crear"
+                element={
+                  <RoleBasedRoute
+                    element={<CrearProducto />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
               <Route
                 path="/productos/editar/:id"
-                element={<EditarProducto />}
+                element={
+                  <RoleBasedRoute
+                    element={<EditarProducto />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
               />
-              {/* Pagos */}
-              <Route path="/pagos" element={<Pagos />} />
-              <Route path="/pagos/crear" element={<CrearPago />} />
-              <Route path="/pagos/editar/:id" element={<EditarPago />} />
-              {/* Contabilidad */}
-              <Route path="/contabilidad" element={<Contabilidad />} />
+              <Route
+                path="/pagos"
+                element={
+                  <RoleBasedRoute
+                    element={<Pagos />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/pagos/crear"
+                element={
+                  <RoleBasedRoute
+                    element={<CrearPago />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/pagos/editar/:id"
+                element={
+                  <RoleBasedRoute
+                    element={<EditarPago />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/clases"
+                element={
+                  <RoleBasedRoute
+                    element={<ListaClases />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/asistencias"
+                element={
+                  <RoleBasedRoute
+                    element={<Asistencias />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/asistencias/registrar"
+                element={
+                  <RoleBasedRoute
+                    element={<RegistrarAsistencia />}
+                    allowedRoles={["recepcionista", "admin"]}
+                  />
+                }
+              />
+
+              {/* Rutas para Entrenadores y Admins */}
+              <Route
+                path="/rutinas/crear"
+                element={
+                  <RoleBasedRoute
+                    element={<CrearRutina />}
+                    allowedRoles={["entrenador", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/rutinas/asignar"
+                element={
+                  <RoleBasedRoute
+                    element={<AsignarRutina />}
+                    allowedRoles={["entrenador", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/composicion-corporal"
+                element={
+                  <RoleBasedRoute
+                    element={<ComposicionCorporal />}
+                    allowedRoles={["entrenador", "admin"]}
+                  />
+                }
+              />
+
+              {/* Rutas para Recepcionistas, Entrenadores y Admins */}
+              <Route
+                path="/consultar-composicion-corporal"
+                element={
+                  <RoleBasedRoute
+                    element={<ConsultarComposicionCorporal />}
+                    allowedRoles={["recepcionista", "entrenador", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/videos-entrenamiento"
+                element={
+                  <RoleBasedRoute
+                    element={<VideosEntrenamiento />}
+                    allowedRoles={["recepcionista", "entrenador", "admin"]}
+                  />
+                }
+              />
+
+              {/* Rutas Solo para Admins */}
+              <Route
+                path="/contabilidad"
+                element={
+                  <RoleBasedRoute
+                    element={<Contabilidad />}
+                    allowedRoles={["admin"]}
+                  />
+                }
+              />
               <Route
                 path="/contabilidad/crear-transaccion"
-                element={<CrearTransaccion />}
+                element={
+                  <RoleBasedRoute
+                    element={<CrearTransaccion />}
+                    allowedRoles={["admin"]}
+                  />
+                }
               />
               <Route
                 path="/contabilidad/editar-transaccion/:id"
-                element={<EditarTransaccion />}
-              />
-              {/* Clases */}
-              <Route path="/clases" element={<ListaClases />} />
-              {/* Asistencias */}
-              <Route path="/asistencias" element={<Asistencias />} />
-              <Route
-                path="/asistencias/registrar"
-                element={<RegistrarAsistencia />}
-              />
-              {/* Rutinas */}
-              <Route path="/rutinas/crear" element={<CrearRutina />} />
-              <Route path="/rutinas/asignar" element={<AsignarRutina />} />
-              {/* Composición Corporal */}
-              <Route
-                path="/composicion-corporal"
-                element={<ComposicionCorporal />}
+                element={
+                  <RoleBasedRoute
+                    element={<EditarTransaccion />}
+                    allowedRoles={["admin"]}
+                  />
+                }
               />
               <Route
-                path="/consultar-composicion-corporal"
-                element={<ConsultarComposicionCorporal />}
+                path="/usuarios"
+                element={
+                  <RoleBasedRoute
+                    element={<Usuarios />}
+                    allowedRoles={["admin"]}
+                  />
+                }
               />
-              {/* Usuarios */}
-              <Route path="/usuarios" element={<Usuarios />} />
-              <Route path="/usuarios/crear" element={<CrearUsuario />} />
-              <Route path="/usuarios/editar/:id" element={<EditarUsuario />} />
-              {/* Indicadores */}
-              <Route path="/indicadores" element={<Indicadores />} />
-              {/* Videos de Entrenamiento */}
               <Route
-                path="/videos-entrenamiento"
-                element={<VideosEntrenamiento />}
+                path="/usuarios/crear"
+                element={
+                  <RoleBasedRoute
+                    element={<CrearUsuario />}
+                    allowedRoles={["admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/usuarios/editar/:id"
+                element={
+                  <RoleBasedRoute
+                    element={<EditarUsuario />}
+                    allowedRoles={["admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/indicadores"
+                element={
+                  <RoleBasedRoute
+                    element={<Indicadores />}
+                    allowedRoles={["admin"]}
+                  />
+                }
               />
             </Route>
           </Route>

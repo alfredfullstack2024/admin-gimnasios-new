@@ -1,6 +1,6 @@
-const mongoose = require("mongoose");
+const db = require("../config/db"); // Importar el objeto completo
 
-const membresiaSchema = new mongoose.Schema(
+const membresiaSchema = new db.mongoose.Schema(
   {
     tipo: {
       type: String,
@@ -22,7 +22,7 @@ const membresiaSchema = new mongoose.Schema(
       min: 0,
     },
     cliente: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: db.mongoose.Schema.Types.ObjectId,
       ref: "Cliente",
       required: true,
     },
@@ -44,11 +44,11 @@ const membresiaSchema = new mongoose.Schema(
       default: "activa",
     },
     creadoPor: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: db.mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Membresia", membresiaSchema);
+module.exports = db.mongoose.model("Membresia", membresiaSchema);

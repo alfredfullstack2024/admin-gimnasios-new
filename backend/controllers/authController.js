@@ -36,8 +36,10 @@ const register = async (req, res) => {
 
     // Generar un token JWT
     const token = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "30d", // Cambiado a 30 días para evitar expiraciones rápidas
     });
+
+    console.log("Token generado para registro:", token); // Log para depuración
 
     res.status(201).json({
       token,
@@ -82,8 +84,10 @@ const login = async (req, res) => {
 
     // Generar un token JWT
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "30d", // Cambiado a 30 días para evitar expiraciones rápidas
     });
+
+    console.log("Token generado para login:", token); // Log para depuración
 
     res.json({
       token,

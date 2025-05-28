@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// Crear una instancia de Axios con la configuración base
 const api = axios.create({
   baseURL: "http://localhost:5000/api",
   headers: {
@@ -8,7 +7,6 @@ const api = axios.create({
   },
 });
 
-// Interceptor para añadir el token a las solicitudes
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -17,16 +15,17 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Interceptor para manejar respuestas y errores
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
-      window.location.href = "/login"; // Redirigir a login automáticamente
+      window.location.href = "/login";
       return Promise.reject(
         new Error("Sesión expirada. Por favor, inicia sesión nuevamente.")
       );
@@ -46,15 +45,12 @@ api.interceptors.response.use(
         )
       );
     }
-    const errorMessage = error.response?.data?.mensaje || "Error desconocido";
+    const errorMessage = error.response?.data?.message || "Error desconocido";
     const statusCode = error.response?.status || "desconocido";
     return Promise.reject(new Error(`Error ${statusCode}: ${errorMessage}`));
   }
 );
 
-// Funciones específicas para cada entidad con soporte para config opcional
-
-// Clientes
 export const obtenerClientes = (config) => api.get("/clientes", config);
 export const consultarClientePorCedula = (numeroIdentificacion, config) =>
   api.get(`/clientes/consultar/${numeroIdentificacion}`, config);
@@ -66,8 +62,15 @@ export const editarCliente = (id, data, config) =>
   api.put(`/clientes/${id}`, data, config);
 export const eliminarCliente = (id, config) =>
   api.delete(`/clientes/${id}`, config);
+export const obtenerClientesActivos = async (config = {}) => {
+  try {
+    const response = await api.get("/clientes/activos", config);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 
-// Productos
 export const obtenerProductos = (config) => api.get("/productos", config);
 export const obtenerProductoPorId = (id, config) =>
   api.get(`/productos/${id}`, config);
@@ -78,7 +81,6 @@ export const editarProducto = (id, data, config) =>
 export const eliminarProducto = (id, config) =>
   api.delete(`/productos/${id}`, config);
 
-// Membresías
 export const obtenerMembresias = (config) => api.get("/membresias", config);
 export const obtenerMembresiaPorId = (id, config) =>
   api.get(`/membresias/${id}`, config);
@@ -89,7 +91,6 @@ export const editarMembresia = (id, data, config) =>
 export const eliminarMembresia = (id, config) =>
   api.delete(`/membresias/${id}`, config);
 
-// Pagos
 export const obtenerPagos = (params, config) =>
   api.get("/pagos", { ...config, params });
 export const consultarPagosPorCedula = (numeroIdentificacion, config) =>
@@ -100,7 +101,6 @@ export const editarPago = (id, data, config) =>
   api.put(`/pagos/${id}`, data, config);
 export const eliminarPago = (id, config) => api.delete(`/pagos/${id}`, config);
 
-// Transacciones
 export const obtenerTransacciones = (params, config) =>
   api.get("/contabilidad", { ...config, params });
 export const obtenerTransaccionPorId = (id, config) =>
@@ -112,7 +112,6 @@ export const editarTransaccion = (id, data, config) =>
 export const eliminarTransaccion = (id, config) =>
   api.delete(`/contabilidad/${id}`, config);
 
-// Entrenadores
 export const obtenerEntrenadores = (config) => api.get("/entrenadores", config);
 export const obtenerEntrenadorPorId = (id, config) =>
   api.get(`/entrenadores/${id}`, config);
@@ -123,7 +122,6 @@ export const editarEntrenador = (id, data, config) =>
 export const eliminarEntrenador = (id, config) =>
   api.delete(`/entrenadores/${id}`, config);
 
-// Rutinas
 export const obtenerRutinas = (config) => api.get("/rutinas", config);
 export const crearRutina = (data, config) => api.post("/rutinas", data, config);
 export const editarRutina = (id, data, config) =>
@@ -139,7 +137,6 @@ export const consultarRutinaPorNumeroIdentificacion = (
   config
 ) => api.get(`/rutinas/consultar/${numeroIdentificacion}`, config);
 
-// Clases
 export const obtenerClasesDisponibles = (config) =>
   api.get("/clases/disponibles", config);
 export const registrarClienteEnClase = (data, config) =>
@@ -149,16 +146,13 @@ export const consultarClasesPorNumeroIdentificacion = (
   config
 ) => api.get(`/clases/consultar/${numeroIdentificacion}`, config);
 
-// Usuarios
 export const obtenerUsuarios = (config) => api.get("/usuarios", config);
 
-// Composición Corporal
 export const crearComposicionCorporal = (data, config) =>
-  api.post("/composicionCorporal", data, config);
+  api.post("/composicion-corporal", data, config);
 export const consultarComposicionPorCliente = (identificacion, config) =>
-  api.get(`/composicionCorporal/cliente/${identificacion}`, config);
+  api.get(`/composicion-corporal/cliente/${identificacion}`, config);
 
-// Autenticación
 export const login = (data) => api.post("/auth/login", data);
 export const registrarse = (data) => api.post("/auth/register", data);
 

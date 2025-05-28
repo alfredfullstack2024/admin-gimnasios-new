@@ -40,7 +40,6 @@ const AsignarRutina = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
-  // Verificar autenticación al cargar el componente
   useEffect(() => {
     if (!user || !user.token) {
       setError("Debes iniciar sesión para asignar una rutina.");
@@ -48,7 +47,6 @@ const AsignarRutina = () => {
     }
   }, [user, navigate]);
 
-  // Cargar clientes y rutinas al montar el componente
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -70,21 +68,14 @@ const AsignarRutina = () => {
         setLoading(false);
       }
     };
-    if (user && user.token) {
-      fetchData();
-    }
+    if (user && user.token) fetchData();
   }, [user]);
 
-  // Cargar asignaciones cuando cambia el cliente seleccionado
   useEffect(() => {
-    if (formData.clienteId) {
-      fetchAsignaciones();
-    } else {
-      setAsignaciones([]); // Limpiar asignaciones si no hay cliente seleccionado
-    }
+    if (formData.clienteId) fetchAsignaciones();
+    else setAsignaciones([]);
   }, [formData.clienteId]);
 
-  // Limpiar mensajes de error y éxito después de 5 segundos
   useEffect(() => {
     if (error || success) {
       const timer = setTimeout(() => {
@@ -119,12 +110,13 @@ const AsignarRutina = () => {
           cliente.numeroIdentificacion,
           config
         );
-        const asignacionesData = Array.isArray(response.data)
-          ? response.data
-          : [response.data];
-        setAsignaciones(asignacionesData);
-      } else {
-        setAsignaciones([]);
+        console.log(
+          "Respuesta de fetchAsignaciones:",
+          JSON.stringify(response.data, null, 2)
+        );
+        setAsignaciones(
+          Array.isArray(response.data) ? response.data : [response.data]
+        );
       }
     } catch (err) {
       console.error("Error al cargar asignaciones:", err);
@@ -140,41 +132,35 @@ const AsignarRutina = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    // Validar que se hayan seleccionado días
-    if (formData.diasEntrenamiento.length === 0) {
-      setError("Debes seleccionar al menos un día de entrenamiento.");
+    if (
+      formData.diasEntrenamiento.length === 0 ||
+      formData.diasDescanso.length === 0
+    ) {
+      setError(
+        "Debes seleccionar al menos un día de entrenamiento y descanso."
+      );
       return;
     }
-    if (formData.diasDescanso.length === 0) {
-      setError("Debes seleccionar al menos un día de descanso.");
-      return;
-    }
-
     try {
       setLoading(true);
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
       let response;
       if (editMode) {
         response = await editarAsignacionRutina(editId, formData, config);
-        console.log("Respuesta del backend (editar):", response);
         setSuccess("Asignación actualizada con éxito!");
       } else {
         response = await asignarRutina(formData, config);
-        console.log("Respuesta del backend (asignar):", response);
         setSuccess("Rutina asignada con éxito!");
       }
       setEditMode(false);
       setEditId(null);
       setFormData({
-        clienteId: formData.clienteId, // Mantener el cliente seleccionado
+        ...formData,
         rutinaId: "",
         diasEntrenamiento: [],
         diasDescanso: [],
       });
-      await fetchAsignaciones();
+      if (formData.clienteId) fetchAsignaciones();
     } catch (err) {
       console.error("Error al procesar asignación:", err);
       setError(
@@ -198,22 +184,22 @@ const AsignarRutina = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Estás seguro de eliminar esta asignación?")) {
-      try {
-        setLoading(true);
-        const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        await eliminarAsignacionRutina(id, config);
-        setSuccess("Asignación eliminada con éxito!");
-        await fetchAsignaciones();
-      } catch (err) {
-        console.error("Error al eliminar asignación:", err);
-        setError(
-          "Error al eliminar asignación: " +
-            (err.response?.data?.mensaje || err.message)
-        );
-      } finally {
-        setLoading(false);
-      }
+    if (!window.confirm("¿Estás seguro de eliminar esta asignación?")) return;
+    try {
+      setLoading(true);
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await eliminarAsignacionRutina(id, config);
+      setSuccess("Asignación eliminada con éxito!");
+      setAsignaciones(asignaciones.filter((a) => a._id !== id));
+      setAsignacionesUsuario(asignacionesUsuario.filter((a) => a._id !== id));
+    } catch (err) {
+      console.error("Error al eliminar asignación:", err);
+      setError(
+        "Error al eliminar asignación: " +
+          (err.response?.data?.mensaje || err.message)
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -224,16 +210,23 @@ const AsignarRutina = () => {
     }
     try {
       setLoading(true);
+      const cleanNumeroCedula = numeroCedula.replace(/[^0-9]/g, "");
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
       const response = await consultarRutinaPorNumeroIdentificacion(
-        numeroCedula,
+        cleanNumeroCedula,
         config
+      );
+      console.log(
+        "Respuesta de handleConsultarCedula:",
+        JSON.stringify(response.data, null, 2)
       );
       const asignacionesData = Array.isArray(response.data)
         ? response.data
         : [response.data];
       setAsignacionesUsuario(asignacionesData);
-      setError("");
+      if (asignacionesData.length === 0) {
+        setError("No se encontraron asignaciones para esta cédula.");
+      }
     } catch (err) {
       console.error("Error al consultar por cédula:", err);
       setError(
@@ -366,7 +359,7 @@ const AsignarRutina = () => {
               setEditMode(false);
               setEditId(null);
               setFormData({
-                clienteId: formData.clienteId,
+                ...formData,
                 rutinaId: "",
                 diasEntrenamiento: [],
                 diasDescanso: [],
@@ -387,7 +380,6 @@ const AsignarRutina = () => {
         </Button>
       </Form>
 
-      {/* Sección para listar las asignaciones del cliente seleccionado */}
       <div className="mt-5">
         <h3>Asignaciones del Cliente</h3>
         {asignaciones.length === 0 ? (
@@ -411,9 +403,8 @@ const AsignarRutina = () => {
                     {asignacion.clienteId?.apellido || ""}
                   </td>
                   <td>
-                    {asignacion.rutinaId
-                      ? `${asignacion.rutinaId.nombreEjercicio} (${asignacion.rutinaId.grupoMuscular})`
-                      : "Desconocido"}
+                    {asignacion.rutinaId?.nombreEjercicio || "Desconocido"} (
+                    {asignacion.rutinaId?.grupoMuscular || ""})
                   </td>
                   <td>{asignacion.diasEntrenamiento?.join(", ") || "N/A"}</td>
                   <td>{asignacion.diasDescanso?.join(", ") || "N/A"}</td>
@@ -442,7 +433,6 @@ const AsignarRutina = () => {
         )}
       </div>
 
-      {/* Sección para consulta por número de cédula */}
       <div className="mt-5">
         <h3>Consultar Asignaciones por Número de Cédula</h3>
         <Row>
@@ -469,7 +459,7 @@ const AsignarRutina = () => {
             </Button>
           </Col>
         </Row>
-        {asignacionesUsuario.length > 0 && (
+        {asignacionesUsuario.length > 0 ? (
           <Table striped bordered hover className="mt-3">
             <thead>
               <tr>
@@ -477,27 +467,39 @@ const AsignarRutina = () => {
                 <th>Rutina</th>
                 <th>Días de Entrenamiento</th>
                 <th>Días de Descanso</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {asignacionesUsuario.map((asignacion) => (
-                <tr key={asignacion._id}>
+              {asignacionesUsuario.map((asignacion, index) => (
+                <tr key={asignacion._id || index}>
                   <td>
                     {asignacion.clienteId?.nombre || "Desconocido"}{" "}
                     {asignacion.clienteId?.apellido || ""}
                   </td>
                   <td>
-                    {asignacion.rutinaId
-                      ? `${asignacion.rutinaId.nombreEjercicio} (${asignacion.rutinaId.grupoMuscular})`
-                      : "Desconocido"}
+                    {asignacion.rutinaId?.nombreEjercicio || "Desconocido"} (
+                    {asignacion.rutinaId?.grupoMuscular || ""})
                   </td>
                   <td>{asignacion.diasEntrenamiento?.join(", ") || "N/A"}</td>
                   <td>{asignacion.diasDescanso?.join(", ") || "N/A"}</td>
+                  <td>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleDelete(asignacion._id)}
+                      disabled={loading}
+                    >
+                      Eliminar
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </Table>
-        )}
+        ) : !loading && !error ? (
+          <p>No hay asignaciones para este número de cédula.</p>
+        ) : null}
       </div>
     </Container>
   );

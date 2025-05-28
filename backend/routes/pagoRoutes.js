@@ -3,10 +3,11 @@ const router = express.Router();
 const Pago = require("../models/Pago");
 const Contabilidad = require("../models/Contabilidad");
 const Cliente = require("../models/Cliente");
-const { protect } = require("../middleware/authMiddleware");
+const Producto = require("../models/Producto");
+const { protect, verificarPermisos } = require("../middleware/authMiddleware");
 
-// Obtener un pago por ID
-router.get("/:id", protect, async (req, res) => {
+// Solo recepcionistas y admins pueden acceder
+router.get("/:id", protect, verificarPermisos(), async (req, res) => {
   try {
     console.log("Solicitud GET recibida en /api/pagos/:id", req.params.id);
     const pago = await Pago.findById(req.params.id)
@@ -32,8 +33,7 @@ router.get("/:id", protect, async (req, res) => {
   }
 });
 
-// Actualizar un pago por ID
-router.put("/:id", protect, async (req, res) => {
+router.put("/:id", protect, verificarPermisos(), async (req, res) => {
   try {
     console.log(
       "Solicitud PUT recibida en /api/pagos/:id",
@@ -54,14 +54,27 @@ router.put("/:id", protect, async (req, res) => {
       return res.status(400).json({ mensaje: "Fecha inválida" });
     }
 
-    // Validar stock si se proporciona un producto
-    if (producto) {
-      const Producto = require("../models/Producto");
+    // Obtener el pago existente para comparar
+    const pagoExistente = await Pago.findById(req.params.id).populate(
+      "producto",
+      "stock"
+    );
+
+    if (producto && producto !== pagoExistente?.producto?.toString()) {
       const productoDoc = await Producto.findById(producto);
       if (productoDoc && productoDoc.stock < cantidad) {
         return res.status(400).json({
           mensaje: "Stock insuficiente",
           detalle: `Stock disponible: ${productoDoc.stock}, solicitado: ${cantidad}`,
+        });
+      }
+    } else if (pagoExistente && cantidad > (pagoExistente.cantidad || 0)) {
+      const diferencia = cantidad - (pagoExistente.cantidad || 0);
+      const productoDoc = await Producto.findById(pagoExistente.producto);
+      if (productoDoc && productoDoc.stock < diferencia) {
+        return res.status(400).json({
+          mensaje: "Stock insuficiente",
+          detalle: `Stock disponible: ${productoDoc.stock}, diferencia requerida: ${diferencia}`,
         });
       }
     }
@@ -88,6 +101,33 @@ router.put("/:id", protect, async (req, res) => {
       });
     }
 
+    // Actualizar stock si el producto o la cantidad cambiaron
+    if (pagoExistente) {
+      const productoDoc = await Producto.findById(pagoActualizado.producto);
+      if (productoDoc) {
+        if (producto && producto !== pagoExistente.producto?.toString()) {
+          // Si cambia el producto, revertir el stock del producto anterior
+          if (pagoExistente.producto) {
+            const productoAnterior = await Producto.findById(
+              pagoExistente.producto
+            );
+            if (productoAnterior) {
+              productoAnterior.stock += pagoExistente.cantidad || 0;
+              await productoAnterior.save();
+            }
+          }
+          // Descontar del nuevo producto
+          productoDoc.stock -= cantidad;
+          await productoDoc.save();
+        } else if (cantidad !== (pagoExistente.cantidad || 0)) {
+          // Si solo cambia la cantidad, ajustar el stock
+          const diferencia = cantidad - (pagoExistente.cantidad || 0);
+          productoDoc.stock -= diferencia;
+          await productoDoc.save();
+        }
+      }
+    }
+
     console.log("Pago actualizado:", JSON.stringify(pagoActualizado, null, 2));
     res.json(pagoActualizado);
   } catch (error) {
@@ -100,8 +140,7 @@ router.put("/:id", protect, async (req, res) => {
   }
 });
 
-// Listar todos los pagos
-router.get("/", protect, async (req, res) => {
+router.get("/", protect, verificarPermisos(), async (req, res) => {
   try {
     console.log("Solicitud GET recibida en /api/pagos", req.query);
     console.log("Modelo Pago:", Pago);
@@ -110,7 +149,6 @@ router.get("/", protect, async (req, res) => {
       throw new Error("Modelo Pago no está correctamente definido");
     }
 
-    // Aplicar filtros de fecha si se proporcionan
     const query = {};
     if (req.query.fechaInicio && req.query.fechaFin) {
       query.fecha = {
@@ -124,11 +162,9 @@ router.get("/", protect, async (req, res) => {
       .populate("producto", "nombre")
       .lean();
 
-    // Log para verificar los estados de los pagos
     const estados = pagos.map((pago) => pago.estado);
     console.log("Estados de los pagos:", estados);
 
-    // Calcular el total solo de pagos completados
     const totalCompletados = pagos
       .filter((pago) => pago.estado === "Completado")
       .reduce((sum, pago) => sum + (pago.monto || 0), 0);
@@ -147,8 +183,7 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
-// Crear un nuevo pago y registrar una transacción correspondiente
-router.post("/", protect, async (req, res) => {
+router.post("/", protect, verificarPermisos(), async (req, res) => {
   try {
     console.log(
       "Solicitud POST recibida en /api/pagos",
@@ -177,6 +212,20 @@ router.post("/", protect, async (req, res) => {
       return res.status(400).json({ mensaje: "Fecha inválida" });
     }
 
+    // Verificar y descontar stock
+    const productoDoc = await Producto.findById(producto);
+    if (!productoDoc) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+    if (productoDoc.stock < cantidad) {
+      return res.status(400).json({
+        mensaje: "Stock insuficiente",
+        detalle: `Stock disponible: ${productoDoc.stock}, solicitado: ${cantidad}`,
+      });
+    }
+    productoDoc.stock -= cantidad;
+    await productoDoc.save();
+
     const nuevoPago = new Pago({
       cliente,
       producto,
@@ -189,7 +238,6 @@ router.post("/", protect, async (req, res) => {
 
     const pagoGuardado = await nuevoPago.save();
 
-    // Crear una transacción correspondiente en la colección transacciones
     const nuevaTransaccion = new Contabilidad({
       tipo: "ingreso",
       monto: Number(monto),
@@ -219,58 +267,58 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
-// Consultar pagos por número de identificación (Protegida)
-router.get("/consultar/:numeroIdentificacion", protect, async (req, res) => {
-  try {
-    console.log(
-      "Consultando pagos para numeroIdentificacion:",
-      req.params.numeroIdentificacion
-    );
+router.get(
+  "/consultar/:numeroIdentificacion",
+  protect,
+  verificarPermisos(),
+  async (req, res) => {
+    try {
+      console.log(
+        "Consultando pagos para numeroIdentificacion:",
+        req.params.numeroIdentificacion
+      );
 
-    // Buscar el cliente por numeroIdentificacion
-    const cliente = await Cliente.findOne({
-      numeroIdentificacion: req.params.numeroIdentificacion,
-    });
-    if (!cliente) {
-      return res.status(404).json({
-        mensaje: "Cliente no encontrado con este número de identificación.",
+      const cliente = await Cliente.findOne({
+        numeroIdentificacion: req.params.numeroIdentificacion,
       });
+      if (!cliente) {
+        return res.status(404).json({
+          mensaje: "Cliente no encontrado con este número de identificación.",
+        });
+      }
+
+      const pagos = await Pago.find({ cliente: cliente._id })
+        .populate("cliente", "nombre apellido")
+        .populate("producto", "nombre")
+        .lean();
+
+      if (!pagos || pagos.length === 0) {
+        return res
+          .status(404)
+          .json({ mensaje: "No se encontraron pagos para este cliente." });
+      }
+
+      const formattedPagos = pagos.map((pago) => ({
+        monto: pago.monto,
+        fechaPago: pago.fecha,
+        metodoPago: pago.metodoPago,
+        concepto: pago.producto?.nombre
+          ? `Compra de producto: ${pago.producto.nombre}`
+          : "Pago general",
+      }));
+
+      console.log("Pagos formateados:", formattedPagos);
+      res.json(formattedPagos);
+    } catch (error) {
+      console.error("Error al consultar pagos:", error.message);
+      res
+        .status(500)
+        .json({ mensaje: "Error interno del servidor.", error: error.message });
     }
-
-    // Buscar los pagos asociados a ese cliente
-    const pagos = await Pago.find({ cliente: cliente._id })
-      .populate("cliente", "nombre apellido")
-      .populate("producto", "nombre")
-      .lean();
-
-    if (!pagos || pagos.length === 0) {
-      return res
-        .status(404)
-        .json({ mensaje: "No se encontraron pagos para este cliente." });
-    }
-
-    // Formatear la respuesta para el frontend
-    const formattedPagos = pagos.map((pago) => ({
-      monto: pago.monto,
-      fechaPago: pago.fecha,
-      metodoPago: pago.metodoPago,
-      concepto: pago.producto?.nombre
-        ? `Compra de producto: ${pago.producto.nombre}`
-        : "Pago general",
-    }));
-
-    console.log("Pagos formateados:", formattedPagos);
-    res.json(formattedPagos);
-  } catch (error) {
-    console.error("Error al consultar pagos:", error.message);
-    res
-      .status(500)
-      .json({ mensaje: "Error interno del servidor.", error: error.message });
   }
-});
+);
 
-// Obtener ingresos totales (para Resumen Financiero)
-router.get("/ingresos", protect, async (req, res) => {
+router.get("/ingresos", protect, verificarPermisos(), async (req, res) => {
   try {
     console.log("Solicitud GET recibida en /api/pagos/ingresos", req.query);
 

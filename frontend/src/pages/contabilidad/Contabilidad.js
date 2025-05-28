@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Table, Button, Alert, Form, Row, Col, Card } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { obtenerTransacciones } from "../../api/axios";
+import * as XLSX from "xlsx";
 
 const Contabilidad = () => {
   const [transacciones, setTransacciones] = useState([]);
@@ -14,6 +15,7 @@ const Contabilidad = () => {
   const [tipoTransaccion, setTipoTransaccion] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false); // Bandera para la primera carga exitosa
   const navigate = useNavigate();
 
   const fetchTransacciones = useCallback(async () => {
@@ -46,52 +48,40 @@ const Contabilidad = () => {
         params.tipo = tipoTransaccion;
       }
 
-      console.log(
-        "Parámetros enviados a /api/contabilidad:",
-        JSON.stringify(params, null, 2)
-      ); // Depuración detallada
       const response = await obtenerTransacciones(params);
-      console.log(
-        "Respuesta del backend (/api/contabilidad):",
-        JSON.stringify(response.data, null, 2)
-      ); // Depuración detallada
       const fetchedTransacciones = response.data.transacciones || [];
+      const ingresos = response.data.totalIngresos || 0;
+      const egresos = response.data.totalEgresos || 0;
+      const balanceCalc = response.data.balance || 0;
+
       setTransacciones(fetchedTransacciones);
-
-      // Calcular ingresos y egresos
-      const ingresos = fetchedTransacciones
-        .filter((t) => t.tipo === "ingreso")
-        .reduce((sum, t) => sum + t.monto, 0);
-      const egresos = fetchedTransacciones
-        .filter((t) => t.tipo === "egreso")
-        .reduce((sum, t) => sum + t.monto, 0);
-
       setTotalIngresos(ingresos);
       setTotalEgresos(egresos);
-      setBalance(ingresos - egresos);
+      setBalance(balanceCalc);
+      setHasInitialLoad(true); // Marca la primera carga exitosa
     } catch (err) {
       const errorMessage = err.message || "Error desconocido";
       setError("Error al cargar las transacciones: " + errorMessage);
-      setTransacciones([]);
-      setTotalIngresos(0);
-      setTotalEgresos(0);
-      setBalance(0);
-      console.error("Detalles del error:", JSON.stringify(err, null, 2)); // Depuración detallada
+      // Solo reinicia valores si no ha habido una carga exitosa previa
+      if (!hasInitialLoad) {
+        setTransacciones([]);
+        setTotalIngresos(0);
+        setTotalEgresos(0);
+        setBalance(0);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [filtroTipo, mes, semana, tipoTransaccion]);
+  }, [filtroTipo, mes, semana, tipoTransaccion, hasInitialLoad]);
 
+  // Ejecutamos fetchTransacciones al montar el componente
   useEffect(() => {
     fetchTransacciones();
-  }, [fetchTransacciones]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const manejarFiltrar = async (e) => {
     e.preventDefault();
-    setTransacciones([]);
-    setTotalIngresos(0);
-    setTotalEgresos(0);
-    setBalance(0);
     await fetchTransacciones();
   };
 
@@ -100,10 +90,6 @@ const Contabilidad = () => {
     setMes("");
     setSemana("");
     setTipoTransaccion("");
-    setTransacciones([]);
-    setTotalIngresos(0);
-    setTotalEgresos(0);
-    setBalance(0);
     await fetchTransacciones();
   };
 
@@ -114,6 +100,43 @@ const Contabilidad = () => {
       date.getUTCMonth(),
       date.getUTCDate()
     ).toLocaleDateString("es-ES");
+  };
+
+  const exportarAExcel = () => {
+    const datosResumen = [
+      {
+        Descripción: "Total Ingresos",
+        Monto: `$${totalIngresos.toLocaleString()}`,
+      },
+      {
+        Descripción: "Total Egresos",
+        Monto: `$${totalEgresos.toLocaleString()}`,
+      },
+      { Descripción: "Balance", Monto: `$${balance.toLocaleString()}` },
+      {},
+    ];
+
+    const datosTransacciones = transacciones.map((transaccion) => ({
+      Tipo: transaccion.tipo === "ingreso" ? "Ingreso" : "Egreso",
+      Descripción: transaccion.descripcion,
+      Monto: `$${transaccion.monto.toLocaleString()}`,
+      Fecha: formatFecha(transaccion.fecha),
+      "Cuenta Débito": transaccion.cuentaDebito,
+      "Cuenta Crédito": transaccion.cuentaCredito,
+      Referencia: transaccion.referencia,
+      "Creado Por": transaccion.creadoPor?.nombre || "Desconocido",
+    }));
+
+    const datosCompletos = [...datosResumen, ...datosTransacciones];
+
+    const ws = XLSX.utils.json_to_sheet(datosCompletos);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Reporte Contabilidad");
+
+    XLSX.writeFile(
+      wb,
+      `Reporte_Contabilidad_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
   };
 
   return (
@@ -200,7 +223,20 @@ const Contabilidad = () => {
       </Card>
       <Card className="mb-4">
         <Card.Body>
-          <Card.Title>Resumen Financiero</Card.Title>
+          <Row>
+            <Col>
+              <Card.Title>Resumen Financiero</Card.Title>
+            </Col>
+            <Col className="text-end">
+              <Button
+                variant="success"
+                onClick={exportarAExcel}
+                disabled={isLoading || transacciones.length === 0 || error}
+              >
+                Descargar en Excel
+              </Button>
+            </Col>
+          </Row>
           <p>
             <strong>Total Ingresos:</strong> ${totalIngresos.toLocaleString()}
           </p>

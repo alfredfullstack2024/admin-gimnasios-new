@@ -1,6 +1,6 @@
 const Entrenador = require("../models/Entrenador");
 const RegistroClases = require("../models/RegistroClases");
-const Cliente = require("../models/Cliente"); // Añadido para validar cliente
+const Cliente = require("../models/Cliente");
 
 exports.obtenerClasesDisponibles = async (req, res) => {
   try {
@@ -75,11 +75,9 @@ exports.registrarClienteEnClase = async (req, res) => {
       !horarioInicio ||
       !horarioFin
     ) {
-      return res
-        .status(400)
-        .json({
-          message: "Todos los campos son requeridos excepto nombre y apellido.",
-        });
+      return res.status(400).json({
+        message: "Todos los campos son requeridos excepto nombre y apellido.",
+      });
     }
 
     // Validar que el numeroIdentificacion exista en la colección clientes
@@ -100,6 +98,19 @@ exports.registrarClienteEnClase = async (req, res) => {
       return res.status(404).json({ message: "Clase no encontrada." });
     }
 
+    // Verificar y actualizar capacidad
+    const diaClase = clase.dias.find(
+      (d) =>
+        d.dia === dia &&
+        d.horarioInicio === horarioInicio &&
+        d.horarioFin === horarioFin
+    );
+    if (!diaClase) {
+      return res
+        .status(404)
+        .json({ message: "Día y horario no encontrados para esta clase." });
+    }
+
     const registros = await RegistroClases.find({
       entrenadorId,
       nombreClase,
@@ -107,16 +118,34 @@ exports.registrarClienteEnClase = async (req, res) => {
       horarioInicio,
       horarioFin,
     });
-    if (registros.length >= (clase.capacidadMaxima || 10)) {
+    if (registros.length >= clase.capacidadMaxima) {
       return res
         .status(400)
         .json({ message: "Capacidad máxima de la clase alcanzada." });
     }
 
+    // Actualizar capacidad en el modelo Entrenador
+    const entrenadorActualizado = await Entrenador.findOneAndUpdate(
+      {
+        _id: entrenadorId,
+        "clases.nombreClase": nombreClase,
+        "clases.dias.dia": dia,
+        "clases.dias.horarioInicio": horarioInicio,
+        "clases.dias.horarioFin": horarioFin,
+      },
+      { $inc: { "clases.$[clase].capacidadMaxima": -1 } },
+      { arrayFilters: [{ "clase.nombreClase": nombreClase }], new: true }
+    );
+    if (!entrenadorActualizado) {
+      return res
+        .status(500)
+        .json({ message: "Error al actualizar la capacidad de la clase." });
+    }
+
     const registro = new RegistroClases({
       numeroIdentificacion,
-      nombre: cliente.nombre || nombre || "", // Usa el nombre del cliente encontrado
-      apellido: cliente.apellido || apellido || "", // Usa el apellido del cliente encontrado
+      nombre: cliente.nombre || nombre || "",
+      apellido: cliente.apellido || apellido || "",
       entrenadorId,
       nombreClase,
       dia,
@@ -172,5 +201,78 @@ exports.consultarClasesPorNumeroIdentificacion = async (req, res) => {
     res
       .status(500)
       .json({ message: "Error interno del servidor.", error: error.message });
+  }
+};
+
+exports.obtenerInscritosPorClase = async (req, res) => {
+  try {
+    const { entrenadorId, nombreClase, dia, horarioInicio, horarioFin } =
+      req.query;
+
+    console.log("Parámetros recibidos en /inscritos:", {
+      entrenadorId,
+      nombreClase,
+      dia,
+      horarioInicio,
+      horarioFin,
+    });
+
+    if (
+      !entrenadorId ||
+      !nombreClase ||
+      !dia ||
+      !horarioInicio ||
+      !horarioFin
+    ) {
+      return res.status(400).json({
+        message:
+          "Todos los parámetros (entrenadorId, nombreClase, dia, horarioInicio, horarioFin) son requeridos.",
+      });
+    }
+
+    // Normalizar los parámetros para evitar problemas de coincidencia
+    const nombreClaseNormalizado = nombreClase.trim().toLowerCase();
+    const diaNormalizado = dia.toLowerCase().trim();
+    const horarioInicioNormalizado = horarioInicio.trim().padStart(5, "0"); // Asegura formato "08:00"
+    const horarioFinNormalizado = horarioFin.trim().padStart(5, "0"); // Asegura formato "10:00"
+
+    console.log("Parámetros normalizados:", {
+      entrenadorId,
+      nombreClase: nombreClaseNormalizado,
+      dia: diaNormalizado,
+      horarioInicio: horarioInicioNormalizado,
+      horarioFin: horarioFinNormalizado,
+    });
+
+    // Buscar en la base de datos con parámetros normalizados
+    const inscritos = await RegistroClases.find({
+      entrenadorId,
+      nombreClase: { $regex: new RegExp(nombreClaseNormalizado, "i") },
+      dia: diaNormalizado,
+      horarioInicio: horarioInicioNormalizado,
+      horarioFin: horarioFinNormalizado,
+    }).lean();
+
+    console.log("Inscritos encontrados:", inscritos);
+
+    if (!inscritos || inscritos.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No hay inscritos en esta clase." });
+    }
+
+    // Devolver solo los nombres completos
+    const nombresInscritos = inscritos.map((inscrito) => ({
+      nombreCompleto: `${inscrito.nombre} ${inscrito.apellido}`,
+    }));
+
+    console.log("Nombres de inscritos devueltos:", nombresInscritos);
+    res.json(nombresInscritos);
+  } catch (error) {
+    console.error("Error al obtener inscritos por clase:", error.message);
+    res.status(500).json({
+      message: "Error interno del servidor al obtener inscritos.",
+      error: error.message,
+    });
   }
 };
