@@ -7,7 +7,10 @@ const rutinaAsignadaSchema = new mongoose.Schema(
       ref: "Cliente",
       required: true,
     },
-    numeroIdentificacion: { type: String, required: true },
+    numeroIdentificacion: {
+      type: String,
+      required: true,
+    },
     rutinaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Rutina",
@@ -43,7 +46,7 @@ const rutinaAsignadaSchema = new mongoose.Schema(
     ],
     asignadaPor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Usuario",
       required: true,
     },
   },
