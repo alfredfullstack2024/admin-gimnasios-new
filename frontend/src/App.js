@@ -66,6 +66,7 @@ import RegistrarAsistencia from "./pages/asistencias/RegistrarAsistencia";
 // Rutinas
 import CrearRutina from "./pages/rutinas/CrearRutina";
 import AsignarRutina from "./pages/rutinas/AsignarRutina";
+import EditarAsignacionRutina from "./pages/rutinas/EditarAsignacionRutina"; // Nuevo componente
 
 // Composición Corporal
 import ComposicionCorporal from "./pages/ComposicionCorporal";
@@ -314,6 +315,15 @@ const App = () => {
                 element={
                   <RoleBasedRoute
                     element={<AsignarRutina />}
+                    allowedRoles={["entrenador", "admin"]}
+                  />
+                }
+              />
+              <Route
+                path="/rutinas/editar-asignacion"
+                element={
+                  <RoleBasedRoute
+                    element={<EditarAsignacionRutina />}
                     allowedRoles={["entrenador", "admin"]}
                   />
                 }

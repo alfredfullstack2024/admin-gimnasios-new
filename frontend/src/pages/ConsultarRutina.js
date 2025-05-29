@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Container, Form, Button, Table, Alert } from "react-bootstrap";
 import {
   consultarRutinaPorNumeroIdentificacion,
   consultarPagosPorCedula,
   consultarClasesPorNumeroIdentificacion,
 } from "../api/axios";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 
 const ConsultarRutina = () => {
   const [numeroIdentificacion, setNumeroIdentificacion] = useState("");
@@ -13,6 +15,28 @@ const ConsultarRutina = () => {
   const [clases, setClases] = useState([]);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
+
+  // Verificar autenticación
+  useEffect(() => {
+    if (!user || !user.token) {
+      setError("Debes iniciar sesión para consultar rutinas.");
+      navigate("/login");
+    }
+  }, [user, navigate]);
+
+  // Limpiar mensajes de error/éxito después de 5 segundos
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError(null);
+        setSuccess(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
 
   const handleConsultar = async (e) => {
     e.preventDefault();
@@ -21,9 +45,11 @@ const ConsultarRutina = () => {
     setRutinas([]);
     setPagos([]);
     setClases([]);
+    setLoading(true);
 
     if (!numeroIdentificacion) {
       setError("Por favor, ingrese un número de identificación.");
+      setLoading(false);
       return;
     }
 
@@ -37,31 +63,43 @@ const ConsultarRutina = () => {
     );
 
     try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+
       // Consultar rutinas
       const rutinasResponse = await consultarRutinaPorNumeroIdentificacion(
-        cleanNumeroIdentificacion
+        cleanNumeroIdentificacion,
+        config
       );
       console.log("Rutinas obtenidas:", rutinasResponse.data);
-      setRutinas(rutinasResponse.data || []);
+      const rutinasData = Array.isArray(rutinasResponse.data)
+        ? rutinasResponse.data
+        : [];
+      setRutinas(rutinasData);
 
       // Consultar pagos
       const pagosResponse = await consultarPagosPorCedula(
         cleanNumeroIdentificacion
       );
       console.log("Pagos obtenidos:", pagosResponse.data);
-      setPagos(pagosResponse.data || []);
+      const pagosData = Array.isArray(pagosResponse.data)
+        ? pagosResponse.data
+        : [];
+      setPagos(pagosData);
 
       // Consultar clases registradas
       const clasesResponse = await consultarClasesPorNumeroIdentificacion(
         cleanNumeroIdentificacion
       );
       console.log("Clases obtenidas:", clasesResponse.data);
-      setClases(clasesResponse.data || []);
+      const clasesData = Array.isArray(clasesResponse.data)
+        ? clasesResponse.data
+        : [];
+      setClases(clasesData);
 
       if (
-        rutinasResponse.data.length === 0 &&
-        pagosResponse.data.length === 0 &&
-        clasesResponse.data.length === 0
+        rutinasData.length === 0 &&
+        pagosData.length === 0 &&
+        clasesData.length === 0
       ) {
         setError("No se encontraron datos para este número de identificación.");
       } else {
@@ -77,7 +115,21 @@ const ConsultarRutina = () => {
           err.message ||
           "Error al consultar los datos."
       );
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Formatear fecha
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -93,9 +145,10 @@ const ConsultarRutina = () => {
             onChange={(e) => setNumeroIdentificacion(e.target.value)}
             placeholder="Ingrese su número de identificación"
             required
+            disabled={loading}
           />
         </Form.Group>
-        <Button variant="primary" type="submit">
+        <Button variant="primary" type="submit" disabled={loading}>
           Consultar
         </Button>
       </Form>
@@ -118,21 +171,37 @@ const ConsultarRutina = () => {
           <Table striped bordered hover responsive>
             <thead>
               <tr>
-                <th>Nombre de la Rutina</th>
-                <th>Ejercicios</th>
-                <th>Duración (min)</th>
+                <th>Rutina</th>
+                <th>Grupo Muscular</th>
+                <th>Series</th>
+                <th>Repeticiones</th>
+                <th>Descripción</th>
+                <th>Días de Entrenamiento</th>
+                <th>Días de Descanso</th>
                 <th>Fecha de Asignación</th>
+                <th>Asignada Por</th>
               </tr>
             </thead>
             <tbody>
               {rutinas.map((rutina, index) => (
-                <tr key={index}>
-                  <td>{rutina.nombreRutina}</td>
-                  <td>{rutina.ejercicios.join(", ")}</td>
-                  <td>{rutina.duracion}</td>
+                <tr key={rutina._id || index}>
+                  <td>{rutina.rutinaId?.nombreEjercicio || "Desconocido"}</td>
+                  <td>{rutina.rutinaId?.grupoMuscular || "N/A"}</td>
+                  <td>{rutina.rutinaId?.series || "N/A"}</td>
+                  <td>{rutina.rutinaId?.repeticiones || "N/A"}</td>
+                  <td>{rutina.rutinaId?.descripcion || "N/A"}</td>
                   <td>
-                    {new Date(rutina.fechaAsignacion).toLocaleDateString()}
+                    {Array.isArray(rutina.diasEntrenamiento)
+                      ? rutina.diasEntrenamiento.join(", ")
+                      : "N/A"}
                   </td>
+                  <td>
+                    {Array.isArray(rutina.diasDescanso)
+                      ? rutina.diasDescanso.join(", ")
+                      : "N/A"}
+                  </td>
+                  <td>{formatDate(rutina.createdAt)}</td>
+                  <td>{rutina.asignadaPor?.nombre || "N/A"}</td>
                 </tr>
               ))}
             </tbody>
@@ -159,9 +228,9 @@ const ConsultarRutina = () => {
             </thead>
             <tbody>
               {pagos.map((pago, index) => (
-                <tr key={index}>
+                <tr key={pago._id || index}>
                   <td>{pago.monto}</td>
-                  <td>{new Date(pago.fechaPago).toLocaleDateString()}</td>
+                  <td>{formatDate(pago.fechaPago)}</td>
                   <td>{pago.metodoPago}</td>
                   <td>{pago.concepto}</td>
                 </tr>
@@ -191,7 +260,7 @@ const ConsultarRutina = () => {
             </thead>
             <tbody>
               {clases.map((clase, index) => (
-                <tr key={index}>
+                <tr key={clase._id || index}>
                   <td>{clase.nombreCompleto}</td>
                   <td>{clase.entrenadorNombre}</td>
                   <td>{clase.nombreClase}</td>

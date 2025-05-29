@@ -140,8 +140,10 @@ router.post("/asignar", protect, async (req, res) => {
       clienteId,
       numeroIdentificacion: cliente.numeroIdentificacion,
       rutinaId,
-      diasEntrenamiento,
-      diasDescanso,
+      diasEntrenamiento: Array.isArray(diasEntrenamiento)
+        ? diasEntrenamiento
+        : [],
+      diasDescanso: Array.isArray(diasDescanso) ? diasDescanso : [],
       asignadaPor: req.user._id,
     });
 
@@ -174,8 +176,10 @@ router.put("/asignar/:id", protect, async (req, res) => {
       {
         clienteId,
         rutinaId,
-        diasEntrenamiento,
-        diasDescanso,
+        diasEntrenamiento: Array.isArray(diasEntrenamiento)
+          ? diasEntrenamiento
+          : [],
+        diasDescanso: Array.isArray(diasDescanso) ? diasDescanso : [],
         asignadaPor: req.user._id,
       },
       { new: true }
@@ -237,11 +241,12 @@ router.get("/consultar/:numeroIdentificacion", protect, async (req, res) => {
     const rutinasAsignadas = await RutinaAsignada.find({
       clienteId: cliente._id,
     })
-      .populate("clienteId", "nombre apellido")
+      .populate("clienteId", "nombre apellido numeroIdentificacion")
       .populate(
         "rutinaId",
-        "grupoMuscular nombreEjercicio series repeticiones descripcion"
-      );
+        "grupoMuscular nombreEjercicio series repeticiones descripcion creadoPor"
+      )
+      .populate("asignadaPor", "nombre");
 
     if (!rutinasAsignadas || rutinasAsignadas.length === 0) {
       return res.status(404).json({
@@ -249,16 +254,19 @@ router.get("/consultar/:numeroIdentificacion", protect, async (req, res) => {
       });
     }
 
-    const formattedRutinas = rutinasAsignadas.map((rutinaAsignada) => ({
-      nombreRutina: rutinaAsignada.rutinaId.nombreEjercicio,
-      ejercicios: [
-        `${rutinaAsignada.rutinaId.grupoMuscular}: ${rutinaAsignada.rutinaId.series} series x ${rutinaAsignada.rutinaId.repeticiones} repeticiones`,
-      ],
-      duracion: rutinaAsignada.diasEntrenamiento * 60,
-      fechaAsignacion: rutinaAsignada.createdAt,
+    // Asegurar que los campos sean arreglos si no lo son
+    const safeRutinasAsignadas = rutinasAsignadas.map((asignacion) => ({
+      ...asignacion.toObject(),
+      diasEntrenamiento: Array.isArray(asignacion.diasEntrenamiento)
+        ? asignacion.diasEntrenamiento
+        : [],
+      diasDescanso: Array.isArray(asignacion.diasDescanso)
+        ? asignacion.diasDescanso
+        : [],
     }));
 
-    res.json(formattedRutinas);
+    console.log("Datos devueltos por el endpoint:", safeRutinasAsignadas);
+    res.json(safeRutinasAsignadas);
   } catch (err) {
     console.error("Error al consultar rutinas:", err);
     res

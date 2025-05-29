@@ -14,7 +14,8 @@ import {
   FaPlus,
   FaSearch,
   FaUser,
-  FaVideo, // Ícono para videos/asesoramiento
+  FaVideo,
+  FaEdit, // Ícono para editar asignación
 } from "react-icons/fa";
 
 const DashboardLayout = () => {
@@ -52,9 +53,10 @@ const DashboardLayout = () => {
           <Nav.Link as={NavLink} to="/dashboard" className="text-white">
             <FaTachometerAlt className="me-2" /> Dashboard
           </Nav.Link>
-          <Nav.Link as={NavLink} to="/suscripcion" className="text-white">
+          {/* Comentamos la opción de Suscripción para ocultarla del menú */}
+          {/* <Nav.Link as={NavLink} to="/suscripcion" className="text-white">
             <FaIdCard className="me-2" /> Suscripción
-          </Nav.Link>
+          </Nav.Link> */}
           <Nav.Link as={NavLink} to="/clientes" className="text-white">
             <FaUsers className="me-2" /> Clientes
           </Nav.Link>
@@ -85,6 +87,13 @@ const DashboardLayout = () => {
           </Nav.Link>
           <Nav.Link as={NavLink} to="/rutinas/asignar" className="text-white">
             <FaPlus className="me-2" /> Asignar rutina
+          </Nav.Link>
+          <Nav.Link
+            as={NavLink}
+            to="/rutinas/editar-asignacion"
+            className="text-white"
+          >
+            <FaEdit className="me-2" /> Editar Asignación Rutina
           </Nav.Link>
           <Nav.Link as={NavLink} to="/rutinas/consultar" className="text-white">
             <FaSearch className="me-2" /> Consultar rutina

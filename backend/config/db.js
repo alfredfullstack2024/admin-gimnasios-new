@@ -2,14 +2,16 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    if (!process.env.MONGO_URI) {
-      throw new Error("La variable de entorno MONGO_URI no está definida.");
+    if (!process.env.MONGODB_URI) {
+      throw new Error(
+        "La variable de entorno MONGODB_URI no está definida. Verifica tu archivo .env."
+      );
     }
-    console.log("Intentando conectar a:", process.env.MONGO_URI);
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    console.log(
+      "Intentando conectar a MongoDB Atlas:",
+      process.env.MONGODB_URI
+    );
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
     console.log(`MongoDB Conectado: ${conn.connection.host}`);
   } catch (error) {
     console.error(`Error en la conexión a MongoDB: ${error.message}`);
@@ -17,4 +19,4 @@ const connectDB = async () => {
   }
 };
 
-module.exports = { connectDB, mongoose }; // Exportar mongoose como parte del objeto
+module.exports = { connectDB, mongoose };

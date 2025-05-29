@@ -1,4 +1,5 @@
 require("dotenv").config();
+console.log("Variables de entorno cargadas:", process.env.MONGODB_URI);
 
 const express = require("express");
 const cors = require("cors");
@@ -6,9 +7,9 @@ const { connectDB, mongoose } = require("./config/db");
 const { protect } = require("./middleware/authMiddleware");
 
 // Validar variables de entorno
-if (!process.env.MONGO_URI) {
+if (!process.env.MONGODB_URI) {
   console.error(
-    "❌ Error: La variable de entorno MONGO_URI no está definida. Verifica tu archivo .env"
+    "❌ Error: La variable de entorno MONGODB_URI no está definida. Verifica tu archivo .env"
   );
   process.exit(1);
 }
@@ -38,6 +39,7 @@ require("./models/RegistroClases");
 require("./models/ComposicionCorporal");
 
 // Conectar a MongoDB
+console.log("Iniciando conexión a MongoDB...");
 connectDB();
 
 // Importar rutas
@@ -50,7 +52,7 @@ const pagoRoutes = require("./routes/pagoRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const claseRoutes = require("./routes/claseRoutes");
-const contabilidad = require("./routes/contabilidad"); // Corrección aquí
+const contabilidad = require("./routes/contabilidad");
 const indicadorRoutes = require("./routes/indicadorRoutes");
 const asistenciaRoutes = require("./routes/asistenciaRoutes");
 const rutinaRoutes = require("./routes/rutinas");
@@ -64,7 +66,7 @@ console.log("Rutas cargadas:", {
   authRoutes: authRoutes.name || "authRoutes",
   userRoutes: userRoutes.name || "userRoutes",
   claseRoutes: claseRoutes.name || "claseRoutes",
-  contabilidad: contabilidad.name || "contabilidad", // Corrección aquí
+  contabilidad: contabilidad.name || "contabilidad",
   indicadorRoutes: indicadorRoutes.name || "indicadorRoutes",
   asistenciaRoutes: asistenciaRoutes.name || "asistenciaRoutes",
   rutinaRoutes: rutinaRoutes.name || "rutinas",
@@ -81,7 +83,7 @@ app.use("/api/pagos", pagoRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", protect, userRoutes);
 app.use("/api/clases", protect, claseRoutes);
-app.use("/api/contabilidad", protect, contabilidad); // Corrección aquí
+app.use("/api/contabilidad", protect, contabilidad);
 app.use("/api/indicadores", protect, indicadorRoutes);
 app.use("/api/asistencias", protect, asistenciaRoutes);
 app.use("/api/rutinas", protect, rutinaRoutes);

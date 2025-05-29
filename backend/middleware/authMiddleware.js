@@ -49,16 +49,18 @@ const protect = asyncHandler(async (req, res, next) => {
 const verificarRol = (...rolesPermitidos) => {
   return asyncHandler(async (req, res, next) => {
     const user = req.user;
-    console.log("Rol del usuario:", user?.rol);
-    console.log("Roles permitidos:", rolesPermitidos);
-
+    console.log(
+      "Verificando rol - Usuario:",
+      user?.rol,
+      "Roles permitidos:",
+      rolesPermitidos
+    );
     if (!user || !user.rol || !rolesPermitidos.includes(user.rol)) {
       console.log("Acceso denegado: Rol no autorizado para el usuario:", user);
       return res
         .status(403)
         .json({ message: "Acceso denegado: Rol no autorizado" });
     }
-
     next();
   });
 };
