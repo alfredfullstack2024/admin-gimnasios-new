@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const Contabilidad = require("../models/Contabilidad");
-const { authMiddleware } = require("../middleware/auth");
+const { protect } = require("../middleware/authMiddleware"); // Cambiado a authMiddleware y usando protect
 
 // Listar todas las transacciones
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", protect, async (req, res) => {
+  // Cambiado authMiddleware por protect
   try {
     console.log("Solicitud GET recibida en /", req.path, req.query);
 
@@ -84,7 +85,8 @@ router.get("/", authMiddleware, async (req, res) => {
 });
 
 // Crear una nueva transacción
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", protect, async (req, res) => {
+  // Cambiado authMiddleware por protect
   try {
     console.log(
       "Solicitud POST recibida en /",
@@ -171,7 +173,8 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 // Obtener una transacción por ID
-router.get("/:id", authMiddleware, async (req, res) => {
+router.get("/:id", protect, async (req, res) => {
+  // Cambiado authMiddleware por protect
   try {
     console.log("Solicitud GET recibida en /:id", req.params.id);
     if (!Contabilidad || typeof Contabilidad.findById !== "function") {
@@ -197,7 +200,8 @@ router.get("/:id", authMiddleware, async (req, res) => {
 });
 
 // Actualizar una transacción
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", protect, async (req, res) => {
+  // Cambiado authMiddleware por protect
   try {
     console.log(
       "Solicitud PUT recibida en /:id",
@@ -252,7 +256,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 // Eliminar una transacción
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", protect, async (req, res) => {
+  // Cambiado authMiddleware por protect
   try {
     console.log("Solicitud DELETE recibida en /:id", req.params.id);
     if (!Contabilidad || typeof Contabilidad.findByIdAndDelete !== "function") {

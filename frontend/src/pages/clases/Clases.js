@@ -8,8 +8,6 @@ const Clases = () => {
   const [clases, setClases] = useState([]);
   const [formData, setFormData] = useState({
     numeroIdentificacion: "",
-    nombre: "",
-    apellido: "",
     entrenadorId: "",
     nombreClase: "",
     dia: "",
@@ -47,7 +45,6 @@ const Clases = () => {
         const token = localStorage.getItem("token");
         const inscritosData = {};
         for (const clase of clases) {
-          // Normalizar los datos antes de enviarlos
           const nombreClaseNormalizado = clase.nombreClase.trim().toLowerCase();
           const diaNormalizado = clase.dia.toLowerCase().trim();
           const horarioInicioNormalizado = clase.horarioInicio
@@ -149,15 +146,12 @@ const Clases = () => {
       navigate("/clases");
       setFormData({
         numeroIdentificacion: "",
-        nombre: "",
-        apellido: "",
         entrenadorId: "",
         nombreClase: "",
         dia: "",
         horarioInicio: "",
         horarioFin: "",
       });
-      // Recargar clases después de registrar
       const updatedResponse = await axios.get(
         "http://localhost:5000/api/clases/disponibles",
         {
@@ -198,8 +192,6 @@ const Clases = () => {
   return (
     <Container>
       <h2>Lista de Clases Disponibles</h2>
-      <p>Número de Identificación</p>
-      <p>Ingrese el número de identificación</p>
       <Form onSubmit={handleSubmit}>
         <Form.Group className="mb-3">
           <Form.Label>Número de Identificación</Form.Label>
@@ -262,7 +254,7 @@ const Clases = () => {
                   <td>
                     {clase.horarioInicio} - {clase.horarioFin}
                   </td>
-                  <td>{clase.capacidadMaxima}</td>
+                  <td>{clase.capacidadMaxima - inscritos.length}</td>
                   <td>
                     <Button
                       variant="primary"

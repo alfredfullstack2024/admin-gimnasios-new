@@ -86,11 +86,17 @@ const CrearRutina = () => {
       fetchRutinas();
     } catch (err) {
       console.error("Error al procesar rutina:", err.response?.data || err);
-      setError(
-        err.response?.data?.mensaje ||
-          err.message ||
-          "Error al procesar la rutina. Revisa los datos e intenta de nuevo."
-      );
+      if (err.response?.status === 401) {
+        setError("Sesión expirada. Por favor, inicia sesión de nuevo.");
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        setError(
+          err.response?.data?.mensaje ||
+            err.message ||
+            "Error al procesar la rutina. Revisa los datos e intenta de nuevo."
+        );
+      }
     }
   };
 

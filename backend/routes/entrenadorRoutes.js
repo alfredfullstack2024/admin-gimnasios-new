@@ -9,31 +9,31 @@ console.log("Configurando rutas para entrenadores...");
 router.get(
   "/",
   protect,
-  verificarPermisos(),
+  verificarPermisos(["admin", "entrenador"]), // Solo admin o entrenador pueden listar
   entrenadorController.listarEntrenadores
 );
 router.post(
   "/",
   protect,
-  verificarPermisos(),
+  verificarPermisos(["admin"]), // Solo admin puede agregar
   entrenadorController.agregarEntrenador
 );
 router.get(
   "/:id",
   protect,
-  verificarPermisos(),
+  verificarPermisos(["admin", "entrenador"]), // Solo admin o entrenador pueden ver detalles
   entrenadorController.obtenerEntrenadorPorId
 );
 router.put(
   "/:id",
   protect,
-  verificarPermisos(),
+  verificarPermisos(["admin"]), // Solo admin puede editar
   entrenadorController.editarEntrenador
 );
 router.delete(
   "/:id",
   protect,
-  verificarPermisos(),
+  verificarPermisos(["admin"]), // Solo admin puede eliminar
   entrenadorController.eliminarEntrenador
 );
 

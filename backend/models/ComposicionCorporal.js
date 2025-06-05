@@ -2,24 +2,24 @@ const mongoose = require("mongoose");
 
 const composicionCorporalSchema = new mongoose.Schema(
   {
-    numeroIdentificacion: { type: String, required: true, index: true }, // Añadir index: true
+    numeroIdentificacion: { type: String, required: true, index: true },
     fecha: { type: Date, required: true },
     peso: { type: Number, required: true },
     altura: { type: Number, required: true },
     imc: { type: Number },
-    porcentajeGrasa: { type: Number },
-    porcentajeMusculo: { type: Number },
-    notas: { type: String },
+    porcentajeGrasa: { type: Number, default: 0 },
+    porcentajeMusculo: { type: Number, default: 0 },
+    notas: { type: String, default: "" },
     medidas: {
-      brazoDerecho: Number,
-      brazoIzquierdo: Number,
-      pecho: Number,
-      cintura: Number,
-      cadera: Number,
-      piernaDerecha: Number,
-      piernaIzquierda: Number,
+      brazoDerecho: { type: Number, default: 0 },
+      brazoIzquierdo: { type: Number, default: 0 },
+      pecho: { type: Number, default: 0 },
+      cintura: { type: Number, default: 0 },
+      cadera: { type: Number, default: 0 },
+      piernaDerecha: { type: Number, default: 0 },
+      piernaIzquierda: { type: Number, default: 0 },
     },
-    objetivo: { type: String },
+    objetivo: { type: String, default: "" },
     creadoPor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Usuario",

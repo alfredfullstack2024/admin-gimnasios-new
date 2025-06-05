@@ -14,7 +14,7 @@ const ListaClases = () => {
       setIsLoading(true);
       try {
         const response = await obtenerClases();
-        console.log("Clases cargadas (estructura):", response.data); // Para depuración
+        console.log("Clases cargadas (estructura):", response.data);
         setClases(response.data);
       } catch (err) {
         setError("Error al cargar clases: " + err.message);
@@ -45,6 +45,9 @@ const ListaClases = () => {
 
       {isLoading && <Alert variant="info">Cargando...</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
+      {!isLoading && clases.length === 0 && !error && (
+        <Alert variant="info">No hay clases para mostrar.</Alert>
+      )}
 
       <Card>
         <Card.Body>
@@ -60,9 +63,8 @@ const ListaClases = () => {
             <thead>
               <tr>
                 <th>Nombre</th>
-                <th>Descripción</th>
-                <th>Horario</th>
-                <th>Capacidad</th>
+                <th>Días y Horarios</th>
+                <th>Capacidad Máxima</th>
                 <th>Entrenador</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -71,22 +73,20 @@ const ListaClases = () => {
             <tbody>
               {clases.map((clase) => (
                 <tr key={clase._id}>
-                  <td>{clase.nombre}</td>
-                  <td>{clase.descripcion}</td>
+                  <td>{clase.nombreClase}</td>
                   <td>
-                    {clase.horario &&
-                    Array.isArray(clase.horario) &&
-                    clase.horario.length > 0
-                      ? clase.horario.map((horario, index) => (
+                    {clase.dias &&
+                    Array.isArray(clase.dias) &&
+                    clase.dias.length > 0
+                      ? clase.dias.map((dia, index) => (
                           <div key={index}>
-                            {horario.dia.charAt(0).toUpperCase() +
-                              horario.dia.slice(1)}
-                            : {horario.hora}
+                            {dia.dia.charAt(0).toUpperCase() + dia.dia.slice(1)}
+                            : {dia.horarioInicio} - {dia.horarioFin}
                           </div>
                         ))
                       : "Sin horario"}
                   </td>
-                  <td>{clase.capacidad}</td>
+                  <td>{clase.capacidadMaxima}</td>
                   <td>
                     {clase.entrenador
                       ? `${clase.entrenador.nombre} ${clase.entrenador.apellido}`

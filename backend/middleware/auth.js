@@ -1,81 +1,48 @@
 const jwt = require("jsonwebtoken");
-const Usuario = require("../models/Usuario"); // Cambié 'User' por 'Usuario'
+const asyncHandler = require("express-async-handler");
+const Usuario = require("../models/Usuario"); // Línea 2: Causa el conflicto
 
-// Middleware para verificar el token y cargar el usuario
-const authMiddleware = async (req, res, next) => {
-  // Extraer el token del header Authorization
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.error("Token no proporcionado o formato inválido:", req.headers);
+// Middleware para verificar el token y autenticar al usuario
+const protect = asyncHandler(async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
+      token = req.headers.authorization.split(" ")[1];
+      console.log("Token recibido:", token);
+
+      if (!process.env.JWT_SECRET) {
+        throw new Error("Clave secreta JWT no definida en .env");
+      }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log("Token decodificado:", decoded);
+
+      req.user = await Usuario.findById(decoded.id).select("-password");
+      if (!req.user) {
+        console.log("Usuario no encontrado para el ID:", decoded.id);
+        return res
+          .status(401)
+          .json({ message: "No autorizado, usuario no encontrado" });
+      }
+      console.log("Usuario encontrado - Rol:", req.user.rol);
+
+      next();
+    } catch (error) {
+      console.error("Error al verificar el token:", error.message);
+      return res.status(401).json({
+        message: "No autorizado, token inválido o expirado",
+        error: error.message,
+      });
+    }
+  } else {
+    console.log("Encabezado Authorization no encontrado o mal formado");
     return res
       .status(401)
-      .json({ mensaje: "Token no proporcionado o formato inválido" });
+      .json({ message: "No autorizado, token no proporcionado" });
   }
+});
 
-  const token = authHeader.replace("Bearer ", "");
-
-  try {
-    // Verificar y decodificar el token
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "supersecreto123"
-    );
-    console.log("Token decodificado:", decoded);
-
-    if (!decoded.id) {
-      console.error("Token no contiene id:", decoded);
-      return res
-        .status(401)
-        .json({ mensaje: "Token inválido: ID de usuario no encontrado" });
-    }
-
-    // Buscar el usuario en la base de datos
-    const user = await Usuario.findById(decoded.id).select("-password");
-    if (!user) {
-      console.error("Usuario no encontrado para ID:", decoded.id);
-      return res.status(401).json({ mensaje: "Usuario no encontrado" });
-    }
-
-    // Asegurar que req.user tenga el formato esperado
-    req.user = {
-      id: user._id.toString(),
-      ...user.toObject(),
-    };
-    console.log("Usuario autenticado:", req.user);
-    next();
-  } catch (error) {
-    console.error("Error al verificar token:", error.message);
-    res.status(401).json({ mensaje: "Token inválido", detalle: error.message });
-  }
-};
-
-// Middleware para verificar permisos según el rol
-const checkRole = (allowedRoles) => (req, res, next) => {
-  if (!req.user) {
-    console.error("Usuario no autenticado en checkRole");
-    return res.status(401).json({ mensaje: "Usuario no autenticado" });
-  }
-
-  const userRole = req.user.rol;
-  if (!userRole) {
-    console.error("Rol no definido para el usuario:", req.user);
-    return res.status(403).json({ mensaje: "Rol de usuario no definido" });
-  }
-
-  if (!allowedRoles.includes(userRole)) {
-    console.error(
-      "Rol no permitido:",
-      userRole,
-      "Roles permitidos:",
-      allowedRoles
-    );
-    return res
-      .status(403)
-      .json({ mensaje: "No tienes permisos para acceder a esta ruta" });
-  }
-
-  console.log("Permisos verificados para rol:", userRole);
-  next();
-};
-
-module.exports = { authMiddleware, checkRole };
+module.exports = { protect };

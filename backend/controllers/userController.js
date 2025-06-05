@@ -1,150 +1,113 @@
+const asyncHandler = require("express-async-handler");
 const Usuario = require("../models/Usuario");
-const jwt = require("jsonwebtoken");
 
-// ✅ REGISTRAR USUARIO
-const registerUser = async (req, res) => {
-  try {
-    const { nombre, apellido, email, telefono, direccion, password, rol } =
-      req.body;
+// @desc    Obtener todos los usuarios
+// @route   GET /api/usuarios
+// @access  Private (Admin)
+exports.obtenerUsuarios = asyncHandler(async (req, res) => {
+  console.log(
+    "Solicitud para obtener usuarios recibida. Rol del usuario:",
+    req.user.rol
+  );
 
-    const normalizedNombre = nombre?.trim();
-    const normalizedApellido = apellido?.trim();
-    const normalizedEmail = email?.trim().toLowerCase();
-    const normalizedPassword = password?.trim();
-
-    if (
-      !normalizedNombre ||
-      !normalizedApellido ||
-      !normalizedEmail ||
-      !normalizedPassword
-    ) {
-      return res.status(400).json({
-        message: "Nombre, apellido, email y contraseña son obligatorios",
-      });
-    }
-
-    const userExists = await Usuario.findOne({ email: normalizedEmail });
-    if (userExists) {
-      return res.status(400).json({ message: "El usuario ya está registrado" });
-    }
-
-    const nuevoUsuario = new Usuario({
-      nombre: normalizedNombre,
-      apellido: normalizedApellido,
-      email: normalizedEmail,
-      telefono: telefono?.trim() || "No registrado",
-      direccion: direccion?.trim() || "No registrada",
-      password: normalizedPassword,
-      rol: rol || "empleado",
-    });
-
-    await nuevoUsuario.save();
-
-    return res.status(201).json({
-      message: "Usuario registrado correctamente",
-      userId: nuevoUsuario._id,
-      email: nuevoUsuario.email,
-    });
-  } catch (error) {
-    console.error("❌ Error al registrar usuario:", error.message, error.stack);
-    return res.status(500).json({ message: "Error interno del servidor" });
+  // Verificar que el usuario sea admin
+  if (req.user.rol !== "admin") {
+    console.log("Acceso denegado: usuario no es admin");
+    return res
+      .status(403)
+      .json({ message: "No tienes permiso para ver los usuarios" });
   }
-};
 
-// ✅ LOGIN DE USUARIO
-const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const usuarios = await Usuario.find().select("-password").lean();
 
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email y contraseña son obligatorios" });
-    }
+  console.log("Usuarios encontrados:", usuarios);
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const usuario = await Usuario.findOne({ email: normalizedEmail });
-
-    if (!usuario) {
-      return res.status(401).json({ message: "Credenciales inválidas" });
-    }
-
-    const isMatch = await usuario.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Credenciales inválidas" });
-    }
-
-    if (!process.env.JWT_SECRET) {
-      console.error("❌ ERROR: JWT_SECRET no está definido en .env");
-      return res
-        .status(500)
-        .json({ message: "Error de configuración del servidor" });
-    }
-
-    const token = jwt.sign(
-      { id: usuario._id, rol: usuario.rol },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    return res.json({
-      message: "Inicio de sesión exitoso",
-      token,
-      user: {
-        id: usuario._id,
-        nombre: usuario.nombre,
-        apellido: usuario.apellido,
-        email: usuario.email,
-        rol: usuario.rol,
-      },
-    });
-  } catch (error) {
-    console.error("❌ Error al iniciar sesión:", error.message, error.stack);
-    return res.status(500).json({ message: "Error interno del servidor" });
+  if (!usuarios || usuarios.length === 0) {
+    console.log("No se encontraron usuarios en la base de datos");
+    return res.status(404).json({ message: "No se encontraron usuarios" });
   }
-};
 
-// ✅ PERFIL DEL USUARIO AUTENTICADO
-const getUserProfile = async (req, res) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ message: "⚠️ Usuario no autenticado" });
-    }
-
-    const usuario = await Usuario.findById(req.user.id).select("-password");
-
-    if (!usuario) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
-    }
-
-    return res.json({
-      id: usuario._id,
-      nombre: usuario.nombre,
-      apellido: usuario.apellido,
-      email: usuario.email,
-      telefono: usuario.telefono,
-      direccion: usuario.direccion,
-      rol: usuario.rol,
-    });
-  } catch (error) {
-    console.error(
-      "❌ Error al obtener el perfil del usuario:",
-      error.message,
-      error.stack
-    );
-    return res.status(500).json({ message: "Error interno del servidor" });
-  }
-};
-
-// 🧠 DEBUG opcional (puede comentarlo si desea)
-console.log("✅ Funciones exportadas desde userController:", {
-  registerUser,
-  loginUser,
-  getUserProfile,
+  res.json(usuarios);
 });
 
-module.exports = {
-  registerUser,
-  loginUser,
-  getUserProfile,
-};
+// @desc    Obtener un usuario por ID
+// @route   GET /api/usuarios/:id
+// @access  Private (Admin)
+exports.obtenerUsuarioPorId = asyncHandler(async (req, res) => {
+  console.log("Solicitud para obtener usuario por ID:", req.params.id);
+
+  const usuario = await Usuario.findById(req.params.id)
+    .select("-password")
+    .lean();
+
+  if (!usuario) {
+    console.log("Usuario no encontrado con ID:", req.params.id);
+    return res.status(404).json({ message: "Usuario no encontrado" });
+  }
+
+  res.json(usuario);
+});
+
+// @desc    Actualizar un usuario
+// @route   PUT /api/usuarios/:id
+// @access  Private (Admin)
+exports.actualizarUsuario = asyncHandler(async (req, res) => {
+  console.log("Solicitud para actualizar usuario con ID:", req.params.id);
+  console.log("Datos recibidos:", req.body);
+
+  const { nombre, email, rol } = req.body;
+
+  const usuario = await Usuario.findById(req.params.id);
+
+  if (!usuario) {
+    console.log("Usuario no encontrado con ID:", req.params.id);
+    return res.status(404).json({ message: "Usuario no encontrado" });
+  }
+
+  // Verificar permisos
+  if (req.user.rol !== "admin") {
+    console.log("Acceso denegado: usuario no es admin");
+    return res
+      .status(403)
+      .json({ message: "No tienes permiso para actualizar usuarios" });
+  }
+
+  usuario.nombre = nombre || usuario.nombre;
+  usuario.email = email || usuario.email;
+  usuario.rol = rol || usuario.rol;
+
+  const usuarioActualizado = await usuario.save();
+  console.log("Usuario actualizado:", usuarioActualizado);
+
+  res.json({
+    message: "Usuario actualizado con éxito",
+    usuario: usuarioActualizado,
+  });
+});
+
+// @desc    Eliminar un usuario
+// @route   DELETE /api/usuarios/:id
+// @access  Private (Admin)
+exports.eliminarUsuario = asyncHandler(async (req, res) => {
+  console.log("Solicitud para eliminar usuario con ID:", req.params.id);
+
+  const usuario = await Usuario.findById(req.params.id);
+
+  if (!usuario) {
+    console.log("Usuario no encontrado con ID:", req.params.id);
+    return res.status(404).json({ message: "Usuario no encontrado" });
+  }
+
+  // Verificar permisos
+  if (req.user.rol !== "admin") {
+    console.log("Acceso denegado: usuario no es admin");
+    return res
+      .status(403)
+      .json({ message: "No tienes permiso para eliminar usuarios" });
+  }
+
+  await usuario.deleteOne();
+  console.log("Usuario eliminado con ID:", req.params.id);
+
+  res.json({ message: "Usuario eliminado con éxito" });
+});

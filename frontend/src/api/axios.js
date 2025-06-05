@@ -1,21 +1,28 @@
 import axios from "axios";
 
+// Configura la URL base del backend (usa esto temporalmente para depuración)
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "http://localhost:5000/api", // URL fija para pruebas
   headers: {
     "Content-Type": "application/json",
   },
 });
+console.log("Base URL del API configurada:", api.defaults.baseURL);
 
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log("Token añadido a la solicitud:", token);
+    } else {
+      console.log("No se encontró token en localStorage.");
     }
+    console.log("Solicitud enviada a:", config.url);
     return config;
   },
   (error) => {
+    console.error("Error en el interceptor de solicitud:", error);
     return Promise.reject(error);
   }
 );
@@ -24,6 +31,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      console.error("Sesión expirada, redirigiendo a login...");
       localStorage.removeItem("token");
       window.location.href = "/login";
       return Promise.reject(
@@ -36,7 +44,11 @@ api.interceptors.response.use(
       );
     }
     if (error.response?.status === 404) {
-      return Promise.reject(new Error("Recurso no encontrado."));
+      return Promise.reject(
+        new Error(
+          "Recurso no encontrado. Verifica la ruta o los datos enviados."
+        )
+      );
     }
     if (!error.response) {
       return Promise.reject(
@@ -45,8 +57,16 @@ api.interceptors.response.use(
         )
       );
     }
-    const errorMessage = error.response?.data?.message || "Error desconocido";
+    const errorMessage =
+      error.response?.data?.mensaje ||
+      error.response?.data?.message ||
+      "Error desconocido";
     const statusCode = error.response?.status || "desconocido";
+    console.error("Error en la respuesta del servidor:", {
+      statusCode,
+      errorMessage,
+      data: error.response?.data,
+    });
     return Promise.reject(new Error(`Error ${statusCode}: ${errorMessage}`));
   }
 );
@@ -135,7 +155,11 @@ export const eliminarAsignacionRutina = (id, config) =>
 export const consultarRutinaPorNumeroIdentificacion = (
   numeroIdentificacion,
   config
-) => api.get(`/rutinas/consultar/${numeroIdentificacion}`, config);
+) =>
+  api.get(
+    `/rutinas/consultarRutinasPorNumeroIdentificacion/${numeroIdentificacion}`,
+    config
+  );
 
 export const obtenerClasesDisponibles = (config) =>
   api.get("/clases/disponibles", config);
@@ -146,7 +170,7 @@ export const consultarClasesPorNumeroIdentificacion = (
   config
 ) => api.get(`/clases/consultar/${numeroIdentificacion}`, config);
 
-export const obtenerUsuarios = (config) => api.get("/usuarios", config);
+export const obtenerUsuarios = (config) => api.get("/users", config);
 
 export const crearComposicionCorporal = (data, config) =>
   api.post("/composicion-corporal", data, config);
@@ -155,5 +179,8 @@ export const consultarComposicionPorCliente = (identificacion, config) =>
 
 export const login = (data) => api.post("/auth/login", data);
 export const registrarse = (data) => api.post("/auth/register", data);
+
+export const editarUsuario = (id, data, config) =>
+  api.put(`/users/${id}`, data, config);
 
 export default api;

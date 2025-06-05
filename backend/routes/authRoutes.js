@@ -1,104 +1,26 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const { authMiddleware } = require("../middleware/auth");
+const authController = require("../controllers/authController");
+const { protect } = require("../middleware/authMiddleware");
 
-// Obtener datos del usuario autenticado
-router.get("/me", authMiddleware, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password");
-    if (!user) {
-      return res.status(404).json({ mensaje: "Usuario no encontrado" });
-    }
-    res.json({ user });
-  } catch (error) {
-    res.status(500).json({ mensaje: "Error al obtener el usuario", error });
-  }
-});
+// @desc    Obtener datos del usuario autenticado
+// @route   GET /api/auth/me
+// @access  Private
+router.get("/me", protect, authController.getMe);
 
-// Login
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
+// @desc    Iniciar sesión
+// @route   POST /api/auth/login
+// @access  Public
+router.post("/login", authController.login);
 
-    // Validar que se enviaron email y password
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ mensaje: "Email y contraseña son obligatorios" });
-    }
+// @desc    Registrar un nuevo usuario
+// @route   POST /api/auth/register
+// @access  Public
+router.post("/register", authController.register);
 
-    // Buscar usuario
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ mensaje: "Usuario no encontrado" });
-    }
-
-    // Verificar contraseña
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ mensaje: "Contraseña incorrecta" });
-    }
-
-    // Generar token con el rol incluido
-    const token = jwt.sign(
-      { id: user._id, email: user.email, rol: user.rol },
-      process.env.JWT_SECRET || "your_jwt_secret",
-      { expiresIn: "1h" }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        nombre: user.nombre,
-        email: user.email,
-        rol: user.rol,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ mensaje: "Error al iniciar sesión", error });
-  }
-});
-
-// Registro
-router.post("/register", async (req, res) => {
-  try {
-    const { nombre, email, password, rol } = req.body;
-
-    // Validar datos
-    if (!nombre || !email || !password) {
-      return res
-        .status(400)
-        .json({ mensaje: "Nombre, email y contraseña son obligatorios" });
-    }
-
-    const nuevoUsuario = new User({ nombre, email, password, rol });
-    await nuevoUsuario.save();
-
-    const token = jwt.sign(
-      {
-        id: nuevoUsuario._id,
-        email: nuevoUsuario.email,
-        rol: nuevoUsuario.rol,
-      },
-      process.env.JWT_SECRET || "your_jwt_secret",
-      { expiresIn: "1h" }
-    );
-
-    res.status(201).json({
-      token,
-      user: {
-        id: nuevoUsuario._id,
-        nombre: nuevoUsuario.nombre,
-        email: nuevoUsuario.email,
-        rol: nuevoUsuario.rol,
-      },
-    });
-  } catch (error) {
-    res.status(400).json({ mensaje: "Error al registrar usuario", error });
-  }
-});
+// @desc    Actualizar datos del usuario autenticado
+// @route   PUT /api/auth/update
+// @access  Private
+router.put("/update", protect, authController.update); // Añadido el método update
 
 module.exports = router;

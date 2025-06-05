@@ -6,27 +6,66 @@ const {
   obtenerComposicionCorporal,
   actualizarComposicionCorporal,
   eliminarComposicionCorporal,
-  consultarComposicionesPorCliente, // Nueva función a importar
+  consultarComposicionesPorCliente,
 } = require("../controllers/composicionCorporalController");
-const {
+const { protect, verificarPermisos } = require("../middleware/authMiddleware");
+
+// Verificar que las funciones del controlador estén definidas
+const controllers = {
+  crearComposicionCorporal,
+  obtenerComposicionesCorporales,
+  obtenerComposicionCorporal,
+  actualizarComposicionCorporal,
+  eliminarComposicionCorporal,
+  consultarComposicionesPorCliente,
+};
+for (const [name, fn] of Object.entries(controllers)) {
+  if (!fn || typeof fn !== "function") {
+    throw new Error(`${name} no está definido o no es una función`);
+  }
+}
+
+// Ruta para registrar composición corporal (solo para admin/entrenador)
+router.post(
+  "/",
   protect,
-  verificarPermisos,
-  permisosPorRol,
-} = require("../middleware/authMiddleware");
+  verificarPermisos(["admin", "entrenador"]),
+  crearComposicionCorporal
+);
 
-router
-  .route("/")
-  .post(protect, verificarPermisos(), crearComposicionCorporal) // Usar verificarPermisos
-  .get(protect, verificarPermisos(), obtenerComposicionesCorporales);
+// Ruta para obtener todas las composiciones corporales (solo admin)
+router.get(
+  "/",
+  protect,
+  verificarPermisos(["admin"]),
+  obtenerComposicionesCorporales
+);
 
-router
-  .route("/:id")
-  .get(protect, verificarPermisos(), obtenerComposicionCorporal)
-  .put(protect, verificarPermisos(), actualizarComposicionCorporal)
-  .delete(protect, verificarPermisos(), eliminarComposicionCorporal);
+// Ruta para obtener una composición corporal por ID (solo admin)
+router.get(
+  "/:id",
+  protect,
+  verificarPermisos(["admin"]),
+  obtenerComposicionCorporal
+);
 
-router
-  .route("/cliente/:identificacion") // Nueva ruta para consultar por cliente
-  .get(protect, verificarPermisos(), consultarComposicionesPorCliente);
+// Ruta para actualizar composición corporal (admin o entrenador que la creó)
+router.put(
+  "/:id",
+  protect,
+  verificarPermisos(["admin", "entrenador"]),
+  actualizarComposicionCorporal
+);
+
+// Ruta para eliminar composición corporal (solo admin)
+router.delete(
+  "/:id",
+  protect,
+  verificarPermisos(["admin"]),
+  eliminarComposicionCorporal
+);
+
+// Ruta para consultar composiciones corporales por cliente (pública)
+router.get("/cliente/:identificacion", consultarComposicionesPorCliente);
 
 module.exports = router;

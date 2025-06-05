@@ -11,10 +11,9 @@ const EditarClase = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    nombre: "",
-    descripcion: "",
-    horario: [{ dia: "", hora: "" }],
-    capacidad: 1,
+    nombreClase: "",
+    dias: [{ dia: "", horarioInicio: "", horarioFin: "" }],
+    capacidadMaxima: 1,
     entrenador: "",
     estado: "activa",
   });
@@ -38,15 +37,14 @@ const EditarClase = () => {
       try {
         const response = await obtenerClasePorId(id);
         const clase = response.data;
-        console.log("Clase cargada (estructura):", clase); // Para depuración
+        console.log("Clase cargada (estructura):", clase);
         setFormData({
-          nombre: clase.nombre || "",
-          descripcion: clase.descripcion || "",
-          horario:
-            Array.isArray(clase.horario) && clase.horario.length > 0
-              ? clase.horario
-              : [{ dia: "", hora: "" }],
-          capacidad: clase.capacidad || 1,
+          nombreClase: clase.nombreClase || "",
+          dias:
+            Array.isArray(clase.dias) && clase.dias.length > 0
+              ? clase.dias
+              : [{ dia: "", horarioInicio: "", horarioFin: "" }],
+          capacidadMaxima: clase.capacidadMaxima || 1,
           entrenador: clase.entrenador?._id || "",
           estado: clase.estado || "activa",
         });
@@ -78,22 +76,22 @@ const EditarClase = () => {
     }));
   };
 
-  const handleHorarioChange = (index, field, value) => {
-    const nuevoHorario = [...formData.horario];
-    nuevoHorario[index][field] = value;
-    setFormData((prevState) => ({ ...prevState, horario: nuevoHorario }));
+  const handleDiaChange = (index, field, value) => {
+    const nuevosDias = [...formData.dias];
+    nuevosDias[index][field] = value;
+    setFormData((prevState) => ({ ...prevState, dias: nuevosDias }));
   };
 
-  const agregarHorario = () => {
+  const agregarDia = () => {
     setFormData((prevState) => ({
       ...prevState,
-      horario: [...prevState.horario, { dia: "", hora: "" }],
+      dias: [...prevState.dias, { dia: "", horarioInicio: "", horarioFin: "" }],
     }));
   };
 
-  const eliminarHorario = (index) => {
-    const nuevoHorario = formData.horario.filter((_, i) => i !== index);
-    setFormData((prevState) => ({ ...prevState, horario: nuevoHorario }));
+  const eliminarDia = (index) => {
+    const nuevosDias = formData.dias.filter((_, i) => i !== index);
+    setFormData((prevState) => ({ ...prevState, dias: nuevosDias }));
   };
 
   const handleSubmit = async (e) => {
@@ -101,26 +99,34 @@ const EditarClase = () => {
     setError("");
     setIsLoading(true);
 
-    if (formData.horario.length === 0) {
-      setError("Debe proporcionar al menos un horario");
+    if (formData.dias.length === 0) {
+      setError("Debe proporcionar al menos un día y horario");
       setIsLoading(false);
       return;
     }
 
-    for (const horario of formData.horario) {
-      if (!horario.dia || !horario.hora) {
-        setError("Todos los horarios deben tener un día y una hora");
+    for (const dia of formData.dias) {
+      if (!dia.dia || !dia.horarioInicio || !dia.horarioFin) {
+        setError("Todos los días deben tener un día, horario de inicio y fin");
         setIsLoading(false);
         return;
       }
-      const diaNormalizado = horario.dia ? horario.dia.toLowerCase() : "";
+      const diaNormalizado = dia.dia ? dia.dia.toLowerCase() : "";
       if (!diaNormalizado || !diasSemana.includes(diaNormalizado)) {
-        setError(`Día inválido: ${horario.dia || "No especificado"}`);
+        setError(`Día inválido: ${dia.dia || "No especificado"}`);
         setIsLoading(false);
         return;
       }
-      if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(horario.hora)) {
-        setError("Formato de hora inválido: " + horario.hora);
+      if (
+        !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(dia.horarioInicio) ||
+        !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(dia.horarioFin)
+      ) {
+        setError(
+          "Formato de hora inválido: " +
+            dia.horarioInicio +
+            " o " +
+            dia.horarioFin
+        );
         setIsLoading(false);
         return;
       }
@@ -128,7 +134,7 @@ const EditarClase = () => {
 
     const datosEnvio = {
       ...formData,
-      capacidad: Number(formData.capacidad),
+      capacidadMaxima: Number(formData.capacidadMaxima),
     };
 
     try {
@@ -156,39 +162,28 @@ const EditarClase = () => {
       <Card>
         <Card.Body>
           <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3" controlId="nombre">
-              <Form.Label>Nombre</Form.Label>
+            <Form.Group className="mb-3" controlId="nombreClase">
+              <Form.Label>Nombre de la Clase</Form.Label>
               <Form.Control
                 type="text"
-                name="nombre"
-                value={formData.nombre}
+                name="nombreClase"
+                value={formData.nombreClase}
                 onChange={handleChange}
                 required
                 disabled={isLoading}
               />
             </Form.Group>
 
-            <Form.Group className="mb-3" controlId="descripcion">
-              <Form.Label>Descripción</Form.Label>
-              <Form.Control
-                as="textarea"
-                name="descripcion"
-                value={formData.descripcion}
-                onChange={handleChange}
-                disabled={isLoading}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3" controlId="horario">
-              <Form.Label>Horarios</Form.Label>
-              {formData.horario.map((horario, index) => (
+            <Form.Group className="mb-3" controlId="dias">
+              <Form.Label>Días y Horarios</Form.Label>
+              {formData.dias.map((dia, index) => (
                 <Row key={index} className="mb-2">
-                  <Col md={5}>
+                  <Col md={4}>
                     <Form.Control
                       as="select"
-                      value={horario.dia}
+                      value={dia.dia}
                       onChange={(e) =>
-                        handleHorarioChange(index, "dia", e.target.value)
+                        handleDiaChange(index, "dia", e.target.value)
                       }
                       required
                       disabled={isLoading}
@@ -201,22 +196,35 @@ const EditarClase = () => {
                       ))}
                     </Form.Control>
                   </Col>
-                  <Col md={5}>
+                  <Col md={3}>
                     <Form.Control
                       type="time"
-                      value={horario.hora}
+                      value={dia.horarioInicio}
                       onChange={(e) =>
-                        handleHorarioChange(index, "hora", e.target.value)
+                        handleDiaChange(index, "horarioInicio", e.target.value)
                       }
                       required
                       disabled={isLoading}
+                      placeholder="Inicio"
+                    />
+                  </Col>
+                  <Col md={3}>
+                    <Form.Control
+                      type="time"
+                      value={dia.horarioFin}
+                      onChange={(e) =>
+                        handleDiaChange(index, "horarioFin", e.target.value)
+                      }
+                      required
+                      disabled={isLoading}
+                      placeholder="Fin"
                     />
                   </Col>
                   <Col md={2}>
                     <Button
                       variant="danger"
-                      onClick={() => eliminarHorario(index)}
-                      disabled={isLoading || formData.horario.length === 1}
+                      onClick={() => eliminarDia(index)}
+                      disabled={isLoading || formData.dias.length === 1}
                     >
                       Eliminar
                     </Button>
@@ -225,20 +233,20 @@ const EditarClase = () => {
               ))}
               <Button
                 variant="secondary"
-                onClick={agregarHorario}
+                onClick={agregarDia}
                 disabled={isLoading}
                 className="mt-2"
               >
-                Agregar otro horario
+                Agregar otro día
               </Button>
             </Form.Group>
 
-            <Form.Group className="mb-3" controlId="capacidad">
-              <Form.Label>Capacidad</Form.Label>
+            <Form.Group className="mb-3" controlId="capacidadMaxima">
+              <Form.Label>Capacidad Máxima</Form.Label>
               <Form.Control
                 type="number"
-                name="capacidad"
-                value={formData.capacidad}
+                name="capacidadMaxima"
+                value={formData.capacidadMaxima}
                 onChange={handleChange}
                 min="1"
                 required

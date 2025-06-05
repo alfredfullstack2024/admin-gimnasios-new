@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Form, Button, Alert, Card } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../../api/axios";
+import { obtenerUsuarios, editarUsuario } from "../../api/axios";
 
 const EditarUsuario = () => {
   const { id } = useParams();
@@ -18,8 +18,11 @@ const EditarUsuario = () => {
   useEffect(() => {
     const fetchUsuario = async () => {
       try {
-        const response = await api.get(`/users/${id}`);
-        const usuario = response.data;
+        const response = await obtenerUsuarios();
+        const usuario = response.data.find((user) => user._id === id);
+        if (!usuario) {
+          throw new Error("Usuario no encontrado");
+        }
         setFormData({
           nombre: usuario.nombre,
           email: usuario.email,
@@ -27,7 +30,8 @@ const EditarUsuario = () => {
           password: "",
         });
       } catch (err) {
-        setError("Error al cargar el usuario: " + err.message);
+        const errorMessage = err.message;
+        setError("Error al cargar el usuario: " + errorMessage);
       }
     };
     fetchUsuario();
@@ -58,10 +62,11 @@ const EditarUsuario = () => {
     }
 
     try {
-      await api.put(`/users/${id}`, datosEnvio);
+      await editarUsuario(id, datosEnvio);
       navigate("/usuarios");
     } catch (err) {
-      setError("Error al actualizar el usuario: " + err.message);
+      const errorMessage = err.message;
+      setError("Error al actualizar el usuario: " + errorMessage);
     }
   };
 

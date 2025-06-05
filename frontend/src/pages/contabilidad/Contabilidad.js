@@ -48,21 +48,24 @@ const Contabilidad = () => {
         params.tipo = tipoTransaccion;
       }
 
+      console.log("Parámetros enviados a obtenerTransacciones:", params); // Depuración
       const response = await obtenerTransacciones(params);
+      console.log("Respuesta del backend:", response.data); // Depuración
       const fetchedTransacciones = response.data.transacciones || [];
       const ingresos = response.data.totalIngresos || 0;
       const egresos = response.data.totalEgresos || 0;
       const balanceCalc = response.data.balance || 0;
 
+      console.log("Valores asignados:", { ingresos, egresos, balanceCalc }); // Depuración
       setTransacciones(fetchedTransacciones);
       setTotalIngresos(ingresos);
       setTotalEgresos(egresos);
       setBalance(balanceCalc);
-      setHasInitialLoad(true); // Marca la primera carga exitosa
+      setHasInitialLoad(true);
     } catch (err) {
       const errorMessage = err.message || "Error desconocido";
+      console.error("Error en fetchTransacciones:", err); // Depuración
       setError("Error al cargar las transacciones: " + errorMessage);
-      // Solo reinicia valores si no ha habido una carga exitosa previa
       if (!hasInitialLoad) {
         setTransacciones([]);
         setTotalIngresos(0);
@@ -74,11 +77,9 @@ const Contabilidad = () => {
     }
   }, [filtroTipo, mes, semana, tipoTransaccion, hasInitialLoad]);
 
-  // Ejecutamos fetchTransacciones al montar el componente
   useEffect(() => {
     fetchTransacciones();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchTransacciones]); // Actualiza cuando cambian las dependencias
 
   const manejarFiltrar = async (e) => {
     e.preventDefault();
@@ -237,15 +238,30 @@ const Contabilidad = () => {
               </Button>
             </Col>
           </Row>
-          <p>
-            <strong>Total Ingresos:</strong> ${totalIngresos.toLocaleString()}
-          </p>
-          <p>
-            <strong>Total Egresos:</strong> ${totalEgresos.toLocaleString()}
-          </p>
-          <p>
-            <strong>Balance:</strong> ${balance.toLocaleString()}
-          </p>
+          {isLoading ? (
+            <p>Cargando resumen...</p>
+          ) : error ? (
+            <p>Error al cargar el resumen.</p>
+          ) : (
+            <>
+              <p>
+                <strong>Total Ingresos:</strong>{" "}
+                {totalIngresos > 0
+                  ? `$${totalIngresos.toLocaleString()}`
+                  : "No hay ingresos registrados"}
+              </p>
+              <p>
+                <strong>Total Egresos:</strong>{" "}
+                {totalEgresos > 0
+                  ? `$${totalEgresos.toLocaleString()}`
+                  : "No hay egresos registrados"}
+              </p>
+              <p>
+                <strong>Balance:</strong>{" "}
+                {balance !== 0 ? `$${balance.toLocaleString()}` : "Sin balance"}
+              </p>
+            </>
+          )}
         </Card.Body>
       </Card>
       <Button

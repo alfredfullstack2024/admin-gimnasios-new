@@ -9,7 +9,7 @@ const rutinaSchema = new mongoose.Schema(
     descripcion: { type: String },
     creadoPor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Usuario", // Cambiado de "User" a "Usuario"
+      ref: "Usuario", // Asegurado que coincide con el modelo de usuario
       required: true,
     },
   },

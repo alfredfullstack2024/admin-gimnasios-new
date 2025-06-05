@@ -37,7 +37,7 @@ const contabilidadSchema = new mongoose.Schema(
     },
     creadoPor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Usuario",
+      ref: "User", // Cambiado de "Usuario" a "User"
       required: true,
     },
     updatedAt: {

@@ -9,39 +9,47 @@ const ConsultarComposicionCorporal = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  useEffect(() => {
-    if (identificacion) {
-      fetchComposiciones();
-    }
-  }, [identificacion]);
-
   const fetchComposiciones = async () => {
     try {
       const response = await consultarComposicionPorCliente(identificacion);
-      setComposiciones(response.data);
-      setError("");
+      // Verifica si la respuesta tiene el formato esperado
+      if (response.data.success) {
+        setComposiciones(response.data.data); // Ajusta según la estructura de la respuesta
+        setError("");
+      } else {
+        setError(
+          response.data.message ||
+            "No se encontraron registros para esta identificación."
+        );
+        setComposiciones([]);
+      }
     } catch (err) {
-      setError("No se encontraron registros para esta identificación.");
+      console.error("Error al consultar composiciones:", err);
+      setError(
+        err.response?.data?.message ||
+          "Error al consultar. Verifica el número de identificación."
+      );
       setComposiciones([]);
     }
-  };
-
-  const evaluarMejora = (current, previous) => {
-    if (!previous) return null;
-    const pesoMejor = current.peso < previous.peso;
-    const grasaMejor = current.porcentajeGrasa < previous.porcentajeGrasa;
-    const masaMejor = current.masaMuscular > previous.masaMuscular;
-    return pesoMejor && grasaMejor && masaMejor ? (
-      <FaCheck color="green" />
-    ) : (
-      <FaTimes color="red" />
-    );
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setSuccess("");
     fetchComposiciones();
+  };
+
+  const evaluarMejora = (current, previous) => {
+    if (!previous) return null;
+    // Ajusta los campos según la respuesta real del backend
+    const pesoMejor = current.peso < previous.peso;
+    const grasaMejor = current.porcentajeGrasa < previous.porcentajeGrasa;
+    const musculoMejor = current.porcentajeMusculo > previous.porcentajeMusculo;
+    return pesoMejor && grasaMejor && musculoMejor ? (
+      <FaCheck color="green" />
+    ) : (
+      <FaTimes color="red" />
+    );
   };
 
   return (
@@ -72,10 +80,10 @@ const ConsultarComposicionCorporal = () => {
               <th>Fecha</th>
               <th>Peso (kg)</th>
               <th>Porcentaje Grasa (%)</th>
-              <th>Masa Muscular (kg)</th>
+              <th>Porcentaje Músculo (%)</th>
               <th>Medidas (cm)</th>
               <th>Objetivo</th>
-              <th>Antecedentes Médicos</th>
+              <th>Notas</th>
               <th>Indicador de Mejora</th>
             </tr>
           </thead>
@@ -88,7 +96,7 @@ const ConsultarComposicionCorporal = () => {
                   <td>{new Date(comp.createdAt).toLocaleDateString()}</td>
                   <td>{comp.peso}</td>
                   <td>{comp.porcentajeGrasa || "N/A"}</td>
-                  <td>{comp.masaMuscular || "N/A"}</td>
+                  <td>{comp.porcentajeMusculo || "N/A"}</td>
                   <td>
                     {comp.medidas ? (
                       <ul style={{ listStyleType: "none", padding: 0 }}>
@@ -111,22 +119,7 @@ const ConsultarComposicionCorporal = () => {
                     )}
                   </td>
                   <td>{comp.objetivo || "N/A"}</td>
-                  <td>
-                    {comp.antecedentesMedicos ? (
-                      <ul style={{ listStyleType: "none", padding: 0 }}>
-                        <li>
-                          Problemas:{" "}
-                          {comp.antecedentesMedicos.problemasFisicos || "N/A"}
-                        </li>
-                        <li>
-                          Notas:{" "}
-                          {comp.antecedentesMedicos.notasAdicionales || "N/A"}
-                        </li>
-                      </ul>
-                    ) : (
-                      "N/A"
-                    )}
-                  </td>
+                  <td>{comp.notas || "N/A"}</td>
                   <td>
                     {index === 0 ? evaluarMejora(comp, composiciones[1]) : null}
                   </td>

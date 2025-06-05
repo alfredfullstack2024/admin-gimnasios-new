@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import {
   obtenerClientes,
   obtenerRutinas,
@@ -50,6 +50,7 @@ const AsignarRutina = () => {
           obtenerClientes(config),
           obtenerRutinas(config),
         ]);
+        console.log("Clientes cargados:", clientesRes.data);
         setClientes(clientesRes.data);
         setRutinas(rutinasRes.data);
       } catch (err) {
@@ -65,10 +66,59 @@ const AsignarRutina = () => {
     if (user && user.token) fetchData();
   }, [user]);
 
+  const fetchAsignaciones = useCallback(async () => {
+    try {
+      setLoading(true);
+      const cliente = clientes.find((c) => c._id === formData.clienteId);
+      console.log("Cliente seleccionado:", cliente);
+      if (cliente && cliente.numeroIdentificacion) {
+        const numeroIdentificacion = cliente.numeroIdentificacion
+          .toString()
+          .trim();
+        console.log(
+          "Consultando asignaciones para numeroIdentificacion:",
+          numeroIdentificacion
+        );
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        const response = await consultarRutinaPorNumeroIdentificacion(
+          numeroIdentificacion,
+          config
+        );
+        console.log(
+          "Respuesta de fetchAsignaciones (data):",
+          JSON.stringify(response.data, null, 2)
+        );
+        const asignacionesData = Array.isArray(response.data)
+          ? response.data
+          : [];
+        console.log("Asignaciones procesadas:", asignacionesData);
+        setAsignaciones(asignacionesData);
+      } else {
+        console.log(
+          "Cliente no encontrado o sin numeroIdentificacion:",
+          formData.clienteId
+        );
+        setAsignaciones([]);
+        setError(
+          "El cliente seleccionado no tiene un número de identificación válido."
+        );
+      }
+    } catch (err) {
+      console.error("Error al cargar asignaciones:", err.response?.data || err);
+      setError(
+        "Error al cargar asignaciones: " +
+          (err.response?.data?.message || err.message)
+      );
+      setAsignaciones([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [clientes, formData.clienteId, user.token]); // Dependencias de fetchAsignaciones
+
   useEffect(() => {
     if (formData.clienteId) fetchAsignaciones();
     else setAsignaciones([]);
-  }, [formData.clienteId]);
+  }, [formData.clienteId, fetchAsignaciones]); // Incluimos fetchAsignaciones en las dependencias
 
   useEffect(() => {
     if (error || success) {
@@ -92,37 +142,6 @@ const AsignarRutina = () => {
   const handleDiasDescanso = (e) => {
     const dias = Array.from(e.target.selectedOptions, (option) => option.value);
     setFormData({ ...formData, diasDescanso: dias });
-  };
-
-  const fetchAsignaciones = async () => {
-    try {
-      setLoading(true);
-      const cliente = clientes.find((c) => c._id === formData.clienteId);
-      if (cliente) {
-        const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        const response = await consultarRutinaPorNumeroIdentificacion(
-          cliente.numeroIdentificacion,
-          config
-        );
-        console.log(
-          "Respuesta de fetchAsignaciones (data):",
-          JSON.stringify(response.data, null, 2)
-        );
-        const asignacionesData = Array.isArray(response.data)
-          ? response.data
-          : [];
-        setAsignaciones(asignacionesData);
-      }
-    } catch (err) {
-      console.error("Error al cargar asignaciones:", err);
-      setError(
-        "Error al cargar asignaciones: " +
-          (err.response?.data?.message || err.message)
-      );
-      setAsignaciones([]);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -198,7 +217,8 @@ const AsignarRutina = () => {
                 <option value="">Seleccione un cliente</option>
                 {clientes.map((cliente) => (
                   <option key={cliente._id} value={cliente._id}>
-                    {cliente.nombre} {cliente.apellido || ""}
+                    {cliente.nombre} {cliente.apellido || ""} -{" "}
+                    {cliente.numeroIdentificacion}
                   </option>
                 ))}
               </Form.Select>
@@ -290,17 +310,19 @@ const AsignarRutina = () => {
             <thead>
               <tr>
                 <th>Rutina</th>
+                <th>Días de Entrenamiento</th>
+                <th>Días de Descanso</th>
               </tr>
             </thead>
             <tbody>
               {asignaciones.map((asignacion) => (
                 <tr key={asignacion._id || asignacion.fechaAsignacion}>
                   <td>
-                    {asignacion.rutinaId?.nombreEjercicio ||
-                      asignacion.nombreRutina ||
-                      "Desconocido"}{" "}
-                    ({asignacion.rutinaId?.grupoMuscular || ""})
+                    {asignacion.rutinaId?.nombreEjercicio || "Desconocido"} (
+                    {asignacion.rutinaId?.grupoMuscular || ""})
                   </td>
+                  <td>{asignacion.diasEntrenamiento.join(", ") || "N/A"}</td>
+                  <td>{asignacion.diasDescanso.join(", ") || "N/A"}</td>
                 </tr>
               ))}
             </tbody>

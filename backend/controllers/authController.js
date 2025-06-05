@@ -6,7 +6,7 @@ const User = require("../models/User");
 // Registrar un nuevo usuario
 const register = async (req, res) => {
   try {
-    const { nombre, email, password, role } = req.body;
+    const { nombre, email, password, rol } = req.body; // Cambiado de role a rol
 
     if (!nombre || !email || !password) {
       return res
@@ -14,32 +14,28 @@ const register = async (req, res) => {
         .json({ message: "Nombre, email y contraseña son requeridos" });
     }
 
-    // Verificar si el usuario ya existe
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "El email ya está registrado" });
     }
 
-    // Encriptar la contraseña
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Crear el nuevo usuario
     const user = new User({
       nombre,
       email,
       password: hashedPassword,
-      role: role || "user", // Por defecto, el rol es "user" si no se especifica
+      rol: rol || "user", // Cambiado de role a rol
     });
 
     const savedUser = await user.save();
 
-    // Generar un token JWT
-    const token = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d", // Cambiado a 30 días para evitar expiraciones rápidas
-    });
-
-    console.log("Token generado para registro:", token); // Log para depuración
+    const token = jwt.sign(
+      { id: savedUser._id, rol: savedUser.rol }, // Cambiado de role a rol
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
     res.status(201).json({
       token,
@@ -47,7 +43,7 @@ const register = async (req, res) => {
         id: savedUser._id,
         nombre: savedUser.nombre,
         email: savedUser.email,
-        role: savedUser.role,
+        rol: savedUser.rol, // Cambiado de role a rol
       },
     });
   } catch (error) {
@@ -70,24 +66,21 @@ const login = async (req, res) => {
         .json({ message: "Email y contraseña son requeridos" });
     }
 
-    // Verificar si el usuario existe
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Credenciales inválidas" });
     }
 
-    // Verificar la contraseña
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Credenciales inválidas" });
     }
 
-    // Generar un token JWT
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d", // Cambiado a 30 días para evitar expiraciones rápidas
-    });
-
-    console.log("Token generado para login:", token); // Log para depuración
+    const token = jwt.sign(
+      { id: user._id, rol: user.rol || "user" }, // Cambiado de role a rol
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
     res.json({
       token,
@@ -95,7 +88,7 @@ const login = async (req, res) => {
         id: user._id,
         nombre: user.nombre,
         email: user.email,
-        role: user.role,
+        rol: user.rol || "user", // Cambiado de role a rol
       },
     });
   } catch (error) {
@@ -110,8 +103,7 @@ const login = async (req, res) => {
 // Obtener los datos del usuario autenticado
 const getMe = async (req, res) => {
   try {
-    // req.user ya está poblado por el middleware authMiddleware (protect)
-    const user = await User.findById(req.user._id).select("-password");
+    const user = await User.findById(req.user.id).select("-password");
     if (!user) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
@@ -120,7 +112,7 @@ const getMe = async (req, res) => {
       id: user._id,
       nombre: user.nombre,
       email: user.email,
-      role: user.role,
+      rol: user.rol || "user", // Cambiado de role a rol
     });
   } catch (error) {
     console.error("Error al obtener datos del usuario:", error.message);
@@ -131,8 +123,53 @@ const getMe = async (req, res) => {
   }
 };
 
+// Actualizar datos del usuario autenticado
+const update = async (req, res) => {
+  try {
+    const { nombre, email, password } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ mensaje: "Usuario no encontrado" });
+    }
+
+    if (nombre) user.nombre = nombre;
+    if (email) {
+      const emailExists = await User.findOne({ email, _id: { $ne: userId } });
+      if (emailExists) {
+        return res.status(400).json({ mensaje: "El email ya está en uso" });
+      }
+      user.email = email;
+    }
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+    }
+
+    await user.save();
+
+    res.json({
+      message: "Usuario actualizado con éxito",
+      user: {
+        id: user._id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol || "user", // Cambiado de role a rol
+      },
+    });
+  } catch (error) {
+    console.error("Error al actualizar usuario:", error.message);
+    res.status(500).json({
+      message: "Error al actualizar usuario",
+      detalle: error.message,
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
+  update,
 };

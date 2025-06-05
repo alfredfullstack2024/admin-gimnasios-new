@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Form, Button, Alert, Card } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import api from "../../api/axios";
+import { registrarse } from "../../api/axios";
 
 const CrearUsuario = () => {
   const [formData, setFormData] = useState({
@@ -29,10 +29,11 @@ const CrearUsuario = () => {
     }
 
     try {
-      await api.post("/users", formData);
+      await registrarse(formData);
       navigate("/usuarios");
     } catch (err) {
-      setError("Error al crear el usuario: " + err.message);
+      const errorMessage = err.message;
+      setError("Error al crear el usuario: " + errorMessage);
     }
   };
 
@@ -96,7 +97,7 @@ const CrearUsuario = () => {
               Crear Usuario
             </Button>
             <Button
-              variant="secondary"
+              variable="secondary"
               className="ms-2"
               onClick={() => navigate("/usuarios")}
             >

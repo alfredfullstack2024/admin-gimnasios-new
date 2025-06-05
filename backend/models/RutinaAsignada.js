@@ -1,56 +1,37 @@
 const mongoose = require("mongoose");
 
-const rutinaAsignadaSchema = new mongoose.Schema(
-  {
-    clienteId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Cliente",
-      required: true,
-    },
-    numeroIdentificacion: {
-      type: String,
-      required: true,
-    },
-    rutinaId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Rutina",
-      required: true,
-    },
-    diasEntrenamiento: [
-      {
-        type: String,
-        enum: [
-          "Lunes",
-          "Martes",
-          "Miércoles",
-          "Jueves",
-          "Viernes",
-          "Sábado",
-          "Domingo",
-        ],
-      },
-    ],
-    diasDescanso: [
-      {
-        type: String,
-        enum: [
-          "Lunes",
-          "Martes",
-          "Miércoles",
-          "Jueves",
-          "Viernes",
-          "Sábado",
-          "Domingo",
-        ],
-      },
-    ],
-    asignadaPor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Usuario",
-      required: true,
-    },
+const RutinaAsignadaSchema = new mongoose.Schema({
+  clienteId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Cliente",
+    required: true,
   },
-  { timestamps: true }
-);
+  numeroIdentificacion: {
+    type: String,
+    required: true,
+  },
+  rutinaId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Rutina",
+    required: true,
+  },
+  diasEntrenamiento: {
+    type: [String],
+    required: true,
+  },
+  diasDescanso: {
+    type: [String],
+    required: true,
+  },
+  asignadaPor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  fechaAsignacion: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-module.exports = mongoose.model("RutinaAsignada", rutinaAsignadaSchema);
+module.exports = mongoose.model("RutinaAsignada", RutinaAsignadaSchema);

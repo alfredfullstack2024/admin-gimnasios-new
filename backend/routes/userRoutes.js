@@ -1,79 +1,126 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/User");
-const { authMiddleware, checkRole } = require("../middleware/auth");
+const { protect, verificarPermisos } = require("../middleware/authMiddleware"); // Cambiado a verificarPermisos
+const asyncHandler = require("express-async-handler");
+const bcrypt = require("bcryptjs");
+const Usuario = require("../models/Usuario");
 
-// Obtener todos los usuarios (solo admin)
-router.get("/", authMiddleware, checkRole(["admin"]), async (req, res) => {
-  try {
-    const usuarios = await User.find().select("-password"); // No devolver contraseñas
-    res.json(usuarios);
-  } catch (error) {
-    res.status(500).json({ mensaje: "Error al obtener los usuarios", error });
-  }
-});
+// @desc    Obtener todos los usuarios
+// @route   GET /api/usuarios
+// @access  Private (Admin)
+router.get(
+  "/",
+  protect,
+  verificarPermisos(["admin"]), // Cambiado de verificarRol a verificarPermisos
+  asyncHandler(async (req, res) => {
+    console.log(
+      "Solicitud GET /api/usuarios recibida. Rol del usuario:",
+      req.user.rol
+    );
 
-// Obtener un usuario por ID (solo admin)
-router.get("/:id", authMiddleware, checkRole(["admin"]), async (req, res) => {
-  try {
-    const usuario = await User.findById(req.params.id).select("-password");
-    if (!usuario) {
+    const users = await Usuario.find().select("-password").lean();
+    console.log("Usuarios encontrados:", users);
+
+    if (!users || users.length === 0) {
+      console.log("No se encontraron usuarios en la base de datos");
+      return res.status(404).json({ mensaje: "No se encontraron usuarios" });
+    }
+
+    res.json(users);
+  })
+);
+
+// @desc    Obtener un usuario por ID
+// @route   GET /api/usuarios/:id
+// @access  Private (Admin)
+router.get(
+  "/:id",
+  protect,
+  verificarPermisos(["admin"]), // Cambiado de verificarRol a verificarPermisos
+  asyncHandler(async (req, res) => {
+    console.log("Solicitud GET /api/usuarios/:id recibida. ID:", req.params.id);
+
+    const user = await Usuario.findById(req.params.id)
+      .select("-password")
+      .lean();
+    if (!user) {
+      console.log("Usuario no encontrado con ID:", req.params.id);
       return res.status(404).json({ mensaje: "Usuario no encontrado" });
     }
-    res.json(usuario);
-  } catch (error) {
-    res.status(500).json({ mensaje: "Error al obtener el usuario", error });
-  }
-});
 
-// Crear un usuario (solo admin)
-router.post("/", authMiddleware, checkRole(["admin"]), async (req, res) => {
-  try {
-    const { nombre, email, password, rol } = req.body;
-    const nuevoUsuario = new User({ nombre, email, password, rol });
-    await nuevoUsuario.save();
-    res.status(201).json({ mensaje: "Usuario creado correctamente" });
-  } catch (error) {
-    res.status(400).json({ mensaje: "Error al crear el usuario", error });
-  }
-});
+    res.json(user);
+  })
+);
 
-// Actualizar un usuario (solo admin)
-router.put("/:id", authMiddleware, checkRole(["admin"]), async (req, res) => {
-  try {
+// @desc    Actualizar un usuario
+// @route   PUT /api/usuarios/:id
+// @access  Private (Admin)
+router.put(
+  "/:id",
+  protect,
+  verificarPermisos(["admin"]), // Cambiado de verificarRol a verificarPermisos
+  asyncHandler(async (req, res) => {
+    console.log(
+      "Solicitud PUT /api/usuarios/:id recibida. ID:",
+      req.params.id,
+      "Datos:",
+      req.body
+    );
+
+    const user = await Usuario.findById(req.params.id);
+    if (!user) {
+      console.log("Usuario no encontrado con ID:", req.params.id);
+      return res.status(404).json({ mensaje: "Usuario no encontrado" });
+    }
+
     const { nombre, email, rol, password } = req.body;
-    const updateData = { nombre, email, rol };
+    if (nombre) user.nombre = nombre;
+    if (email) user.email = email;
+    if (rol) user.rol = rol;
     if (password) {
-      updateData.password = password; // El middleware pre-save se encargará de hashear la contraseña
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
     }
-    const usuario = await User.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-    }).select("-password");
-    if (!usuario) {
-      return res.status(404).json({ mensaje: "Usuario no encontrado" });
-    }
-    res.json({ mensaje: "Usuario actualizado correctamente", usuario });
-  } catch (error) {
-    res.status(400).json({ mensaje: "Error al actualizar el usuario", error });
-  }
-});
 
-// Eliminar un usuario (solo admin)
+    await user.save();
+    console.log("Usuario actualizado:", user);
+
+    res.json({
+      mensaje: "Usuario actualizado con éxito",
+      user: {
+        id: user._id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+      },
+    });
+  })
+);
+
+// @desc    Eliminar un usuario
+// @route   DELETE /api/usuarios/:id
+// @access  Private (Admin)
 router.delete(
   "/:id",
-  authMiddleware,
-  checkRole(["admin"]),
-  async (req, res) => {
-    try {
-      const usuario = await User.findByIdAndDelete(req.params.id);
-      if (!usuario) {
-        return res.status(404).json({ mensaje: "Usuario no encontrado" });
-      }
-      res.json({ mensaje: "Usuario eliminado correctamente" });
-    } catch (error) {
-      res.status(500).json({ mensaje: "Error al eliminar el usuario", error });
+  protect,
+  verificarPermisos(["admin"]), // Cambiado de verificarRol a verificarPermisos
+  asyncHandler(async (req, res) => {
+    console.log(
+      "Solicitud DELETE /api/usuarios/:id recibida. ID:",
+      req.params.id
+    );
+
+    const user = await Usuario.findById(req.params.id);
+    if (!user) {
+      console.log("Usuario no encontrado con ID:", req.params.id);
+      return res.status(404).json({ mensaje: "Usuario no encontrado" });
     }
-  }
+
+    await user.deleteOne();
+    console.log("Usuario eliminado con ID:", req.params.id);
+
+    res.json({ mensaje: "Usuario eliminado con éxito" });
+  })
 );
 
 module.exports = router;
